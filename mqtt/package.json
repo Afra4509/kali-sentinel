@@ -1,0 +1,14 @@
+{
+  "name": "kalisentinel-mqtt-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simulator publisher MQTT untuk menguji dashboard KALI-Sentinel tanpa ESP32",
+  "scripts": {
+    "demo": "node simulator-publisher.js --speed 10",
+    "demo-loop": "node simulator-publisher.js --speed 10 --loop",
+    "training": "node simulator-publisher.js --file ../data/kalisentinel_training_30hari.csv --speed 600"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.1"
+  }
+}

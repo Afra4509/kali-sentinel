@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KALI-Sentinel</title>
+<meta name="description" content="Peringatan dini dugaan pencemaran Kali Surabaya dari dua node sensor, HULU dan HILIR. Proyek AIoT BINUS Robotics Cup 2026.">
+<meta property="og:title" content="KALI-Sentinel: peringatan dini pencemaran Kali Surabaya">
+<meta property="og:description" content="Dua node sensor membandingkan air di hulu dan hilir. Jika hanya hilir yang berubah, segmen di antaranya jadi prioritas inspeksi.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday-tech: lapang, lembut, tetap profesional (design system soft-gradient tim)
+   IDEA sungai sebagai garis cahaya pastel: dua titik sensor di atas aliran, segmen di antaranya menyala saat ada dugaan
+   PICTURE kartu mesh pastel 4:5 dengan aliran sungai berlapis, dua node, orb mengambang, dan chip status kaca yang berganti
+   COLOUR kanvas #F4F6FA, kartu putih/kaca, tinta #1E1B3A, gradasi peach-lavender-biru; warna status hanya untuk status
+   TYPE Plus Jakarta Sans 700/600/500/400 sesuai skala dokumen
+   LAYOUT desktop: hero split 55/45, lalu bento 35/65 dengan carousel, lalu grid 3 kolom; HP: bertumpuk, menu jadi drawer */
+:root{color-scheme:light;
+--bg-canvas:#F4F6FA;--bg-surface:#FFFFFF;--bg-glass:rgba(255,255,255,.72);
+--text-primary:#1E1B3A;--text-secondary:#64687A;--text-muted:#9499AD;
+--accent-lavender:#A78BFA;--accent-blue:#6DA6FF;--accent-mint:#67D5C8;--accent-rose:#F9A8C9;
+--lavender-text:#6D4FD8; /* lavender digelapkan agar teks eyebrow lolos kontras AA */
+--border-subtle:rgba(255,255,255,.85);--border-line:rgba(30,27,58,.08);
+--gradient-primary:linear-gradient(135deg,#FF9E9E 0%,#C594FF 52%,#6DA8FF 100%);
+--gradient-cta:linear-gradient(135deg,#D9486A 0%,#8250E6 52%,#3B73E0 100%); /* versi tua dari gradient-primary: teks putih ≥ 4.5:1 */
+--gradient-mesh-hero:linear-gradient(145deg,#FFD1C9 0%,#E7B8F5 45%,#8CB4FF 100%);
+--gradient-card-blue:linear-gradient(160deg,#C7D2FE 0%,#86B3FA 100%);
+--gradient-card-mint:linear-gradient(160deg,#CCF3F0 0%,#83D9D1 100%);
+--gradient-card-rose:linear-gradient(160deg,#FCE7F0 0%,#F4AFCB 100%);
+--gradient-card-lav:linear-gradient(160deg,#EDE4FF 0%,#C2A9FB 100%);
+--gradient-tint-mint:linear-gradient(180deg,#E2F6F4 0%,#D1EFEA 100%);
+--gradient-tint-rose:linear-gradient(180deg,#FCE7F0 0%,#F8D3E3 100%);
+--shadow-container:0 20px 50px -15px rgba(30,27,58,.08);--shadow-card:0 10px 25px -8px rgba(30,27,58,.06);--shadow-cta:0 8px 20px -4px rgba(155,130,255,.45);
+--ease:cubic-bezier(.22,1,.36,1)}
+*{box-sizing:border-box;min-width:0}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{margin:0;background:var(--bg-canvas);color:var(--text-primary);font:15px/1.6 "Plus Jakarta Sans",system-ui,-apple-system,sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:-20% -10% auto auto;width:70vw;height:70vw;max-width:900px;max-height:900px;background:radial-gradient(closest-side,rgba(199,210,254,.55),transparent);pointer-events:none;z-index:-1}
+a{color:inherit}
+img,svg{max-width:100%}
+:focus-visible{outline:2px solid var(--accent-blue);outline-offset:3px;border-radius:12px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 clamp(16px,4vw,48px)}
+.shell{background:var(--bg-glass);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--border-subtle);border-radius:32px;box-shadow:var(--shadow-container)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.shell,.nav,.glass{background:#fff}}
+/* nav */
+.nav{position:sticky;top:12px;z-index:30;margin:12px auto 0;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;min-height:72px;padding:0 20px 0 24px;border-radius:999px;background:var(--bg-glass);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--border-subtle);box-shadow:var(--shadow-card)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.02em;text-decoration:none}
+.logo i{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--gradient-primary)}
+.logo svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
+.links{display:flex;justify-content:center;gap:4px}
+.links a{padding:8px 14px;border-radius:999px;text-decoration:none;font-weight:500;font-size:14px;color:var(--text-secondary);transition:color .25s var(--ease),background .25s var(--ease)}
+.links a:hover{color:var(--text-primary);background:rgba(255,255,255,.8)}
+.burger{display:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--border-line);background:#fff;cursor:pointer;place-items:center}
+.burger svg{width:20px;height:20px;fill:none;stroke:var(--text-primary);stroke-width:1.5;stroke-linecap:round}
+.drawer{position:fixed;inset:0;z-index:50;display:none}
+.drawer.open{display:block}
+.drawer .scrim{position:absolute;inset:0;background:rgba(30,27,58,.25);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.drawer .panel{position:absolute;top:12px;right:12px;left:12px;padding:20px;border-radius:28px;background:#fff;box-shadow:var(--shadow-container);display:grid;gap:4px;animation:up .3s var(--ease)}
+.drawer .panel a{padding:14px 16px;border-radius:16px;text-decoration:none;font-weight:600;font-size:16px}
+.drawer .panel a:hover{background:var(--bg-canvas)}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:12px 24px;border-radius:999px;font-weight:600;font-size:15px;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .25s var(--ease),box-shadow .25s var(--ease),background .25s var(--ease),filter .25s var(--ease);white-space:nowrap}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn.pri{background:var(--gradient-cta);color:#fff;box-shadow:var(--shadow-cta)}
+.btn.pri:hover{transform:translateY(-2px);filter:saturate(1.15);box-shadow:0 14px 28px -6px rgba(155,130,255,.6)}
+.btn.sec{background:#fff;color:var(--text-primary);border-color:var(--border-line);box-shadow:var(--shadow-card)}
+.btn.sec:hover{background:#F8F9FC;border-color:rgba(30,27,58,.16)}
+.btn.sm{min-height:40px;padding:8px 18px;font-size:14px}
+.icb{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid var(--border-line);cursor:pointer;color:var(--text-primary);transition:transform .25s var(--ease),background .25s var(--ease);text-decoration:none;flex:none}
+.icb:hover{transform:translateY(-2px);background:#F1EAFE}
+.icb svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icb[disabled]{opacity:.4;cursor:default;transform:none}
+.ic{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:var(--shadow-card);flex:none}
+.ic svg{width:20px;height:20px;fill:none;stroke:var(--text-primary);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+/* type */
+.eyebrow{display:inline-block;font-size:13px;font-weight:500;letter-spacing:.01em;color:var(--lavender-text);margin-bottom:14px}
+h1{font-size:clamp(36px,5vw,52px);line-height:1.12;letter-spacing:-.03em;font-weight:700;margin:0 0 18px;text-wrap:balance}
+h2{font-size:clamp(24px,2.6vw,28px);line-height:1.25;letter-spacing:-.02em;font-weight:700;margin:0 0 10px;text-wrap:balance}
+h3{font-size:clamp(16px,1.6vw,18px);line-height:1.35;letter-spacing:-.01em;font-weight:600;margin:0 0 6px}
+p{margin:0;color:var(--text-secondary)}
+.lede{font-size:16px;max-width:46ch}
+.cap{font-size:13px;font-weight:500;color:var(--text-secondary)}
+section{margin-top:28px}
+/* hero */
+.hero{display:grid;grid-template-columns:55fr 45fr;gap:32px;padding:clamp(24px,4vw,48px);align-items:center}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin:28px 0 32px}
+.pillars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:460px}
+.pillars div{display:grid;gap:10px}
+.pillars b{display:block;font-weight:600;font-size:14px;line-height:1.3}
+.pillars span{font-size:13px;color:var(--text-secondary)}
+.media{position:relative;aspect-ratio:4/5;border-radius:24px;overflow:hidden;background:var(--gradient-mesh-hero);box-shadow:var(--shadow-container)}
+.media svg.scene{position:absolute;inset:0;width:100%;height:100%}
+.orb{position:absolute;width:20%;aspect-ratio:1;border-radius:50%;left:70%;top:30%;background:radial-gradient(circle at 32% 30%,#fff 0%,#E9E3FF 38%,#B9C9FF 70%,#9CB3FF 100%);box-shadow:0 18px 30px -10px rgba(80,90,200,.45),inset -6px -8px 16px rgba(120,110,230,.25);animation:float 6s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-12px)}}
+.glass{position:absolute;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.78);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--border-subtle);box-shadow:var(--shadow-card);font-size:13px;line-height:1.35}
+.glass b{font-weight:700}
+.g1{left:6%;top:7%;max-width:62%}
+.g2{right:6%;bottom:7%;left:22%}
+.st{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12px;color:#fff;transition:background .5s var(--ease)}
+.st svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.s-AMAN{background:#0F7A46}.s-INFO{background:#2156D4}.s-WASPADA{background:#F2B705;color:#1E1B3A}.s-BAHAYA{background:#C4231A}
+.g2 .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.g2 .vals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;font-variant-numeric:tabular-nums}
+.g2 .vals div{padding:6px 8px;border-radius:10px;background:rgba(244,246,250,.9)}
+.g2 .vals small{display:block;color:var(--text-secondary);font-size:11.5px}
+.g2 .vals b{font-size:15px;transition:color .4s}
+.note{position:absolute;left:6%;bottom:2.2%;font-size:11.5px;color:#3d3a5c;opacity:.85;display:none}
+/* benefits bento */
+.bento{display:grid;grid-template-columns:35fr 65fr;overflow:hidden}
+.bl{padding:clamp(24px,3.5vw,44px);border-right:1px solid var(--border-line);display:flex;flex-direction:column;gap:22px}
+.bl hr{width:32px;border:0;border-top:2px solid var(--accent-lavender);margin:0}
+.minis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mini{padding:16px;border-radius:16px;box-shadow:var(--shadow-card);display:grid;gap:8px;align-content:start}
+.mini.m{background:var(--gradient-tint-mint)}.mini.r{background:var(--gradient-tint-rose)}
+.mini .ic{width:36px;height:36px}.mini .ic svg{width:18px;height:18px}
+.mini b{font-size:14px;font-weight:600;line-height:1.3}
+.mini p{font-size:13px;line-height:1.5}
+.bl .btn{margin-top:auto;justify-content:space-between}
+.br{padding:clamp(24px,3.5vw,44px);display:grid;gap:18px;align-content:start}
+.bh{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bh .arrows{display:flex;gap:8px}
+.track{display:grid;grid-auto-flow:column;grid-auto-columns:calc(50% - 8px);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 2px 8px;margin:-4px -2px 0}
+.track::-webkit-scrollbar{display:none}
+.feat{scroll-snap-align:start;display:grid;gap:12px}
+.fc{position:relative;overflow:hidden;min-height:220px;border-radius:24px;padding:22px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:var(--shadow-card)}
+.fc .wave{position:absolute;inset:0;width:100%;height:100%}
+.fc .ic{position:absolute;top:22px;left:50%;transform:translateX(-50%)}
+.fc h3,.fc p{position:relative}
+.fc p{color:#33304f;font-size:14px}
+.fc.blue{background:var(--gradient-card-blue)}.fc.mint{background:var(--gradient-card-mint)}.fc.rose{background:var(--gradient-card-rose)}.fc.lav{background:var(--gradient-card-lav)}
+.prog{height:6px;border-radius:999px;background:rgba(30,27,58,.07);overflow:hidden;margin:0 6px}
+.prog i{display:block;height:100%;border-radius:999px;transition:width .6s var(--ease)}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:14px;border-radius:20px;background:#fff;box-shadow:var(--shadow-card)}
+.metric{display:flex;align-items:center;gap:12px;padding:8px 14px}
+.metric+.metric{border-left:1px solid var(--border-line)}
+.metric .ic{width:40px;height:40px;box-shadow:none;background:var(--bg-canvas)}
+.metric b{display:block;font-size:clamp(20px,2vw,24px);font-weight:700;letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.metric span{font-size:12.5px;color:var(--text-secondary);line-height:1.35;display:block}
+.foot{font-size:12.5px;color:var(--text-secondary)}
+/* showcase */
+.show{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;padding:clamp(20px,3vw,32px)}
+.vis{position:relative;overflow:hidden;border-radius:24px;min-height:320px;padding:22px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:var(--shadow-card)}
+.vis.rose{background:linear-gradient(160deg,#FFE1E8 0%,#F7B7CF 55%,#E9A6D9 100%)}
+.vis.blue{background:linear-gradient(160deg,#DCE3FF 0%,#A9B8FA 55%,#7F8EF0 100%)}
+.vis svg.bg{position:absolute;inset:0;width:100%;height:100%}
+.vis .glass{position:relative;left:auto;top:auto;right:auto;bottom:auto}
+.vis .glass h3{margin-bottom:4px}
+.vis .glass p{font-size:13.5px;color:#3d3a5c}
+.flow{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.flow span{padding:4px 10px;border-radius:999px;background:#fff;font-size:12.5px;font-weight:600}
+.ed{border-radius:24px;padding:26px;background:#fff;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:12px;border:1px solid var(--border-line)}
+.ed p{font-size:14.5px}
+.ed .icb{margin-top:auto;background:#F1EAFE;border-color:transparent}
+.ed ul{margin:0;padding-left:18px;color:var(--text-secondary);font-size:14px;display:grid;gap:4px}
+footer{margin:28px 0 24px;padding:24px clamp(20px,3vw,32px);display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;justify-content:space-between;font-size:13.5px;color:var(--text-secondary)}
+footer nav{display:flex;flex-wrap:wrap;gap:6px 18px}
+footer a{text-decoration:none;font-weight:500}
+footer a:hover{color:var(--text-primary)}
+.rv{opacity:0;transform:translateY(16px)}
+.rv.in{animation:up .7s var(--ease) forwards}
+@keyframes up{to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}html{scroll-behavior:auto}}
+@media(max-width:1023px){
+ .hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .bento{grid-template-columns:minmax(0,1fr)}.bl{border-right:0;border-bottom:1px solid var(--border-line)}
+ .show{grid-template-columns:repeat(2,minmax(0,1fr))}.show .ed{grid-column:1/-1;order:3}
+}
+@media(max-width:767px){
+ .nav{grid-template-columns:auto auto;justify-content:space-between;padding:0 12px 0 16px;min-height:64px}
+ .links,.nav .btn{display:none}.burger{display:grid}
+ .hero{grid-template-columns:minmax(0,1fr)}
+ .media{aspect-ratio:4/5}.g1{display:none}.g2{left:5%;right:5%;bottom:5%}.g2 #hmsg{display:none}
+ .pillars{gap:10px}
+ .track{grid-auto-columns:86%}
+ .metrics{grid-template-columns:minmax(0,1fr)}.metric+.metric{border-left:0;border-top:1px solid var(--border-line)}
+ .show{grid-template-columns:minmax(0,1fr)}
+ .shell{border-radius:28px}
+ .minis{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:400px){.cta .btn{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header class="nav" id="top">
+  <a class="logo" href="#top" aria-label="KALI-Sentinel, kembali ke atas"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/><path d="M3 15c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/></svg></i>KALI-Sentinel</a>
+  <nav class="links" aria-label="Navigasi utama"><a href="#cara-kerja">Cara kerja</a><a href="#fitur">Fitur</a><a href="#batasan">Batasan</a><a href="dashboard.html#tentang">Arsitektur</a><a href="dashboard.html#riwayat">Data</a></nav>
+  <a class="btn pri sm" href="dashboard.html">Buka dashboard<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  <button class="burger" id="burger" aria-label="Buka menu" aria-expanded="false" aria-controls="drawer"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h10"/></svg></button>
+ </header>
+
+ <main>
+ <section class="shell hero" aria-labelledby="h-hero">
+  <div>
+   <span class="eyebrow">AIoT · BINUS Robotics Cup 2026</span>
+   <h1 id="h-hero">Peringatan dini dugaan pencemaran Kali Surabaya.</h1>
+   <p class="lede">Dua node sensor membandingkan air di hulu dan hilir. Jika hanya hilir yang berubah, dashboard menandai segmen di antaranya sebagai prioritas inspeksi dalam hitungan menit.</p>
+   <div class="cta">
+    <a class="btn pri" href="dashboard.html">Buka dashboard<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    <a class="btn sec" href="#cara-kerja">Lihat cara kerja</a>
+   </div>
+   <div class="pillars">
+    <div><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span><p><b>Deteksi</b><span>Dini</span></p></div>
+    <div><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1-.4-8A6 6 0 0 1 18 8a3.5 3.5 0 0 1 0 7"/><path d="M8 19l1-2M12 21l1-2M16 19l1-2"/></svg></span><p><b>Hujan</b><span>Terpilah</span></p></div>
+    <div><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><p><b>Sensor</b><span>Terpantau</span></p></div>
+   </div>
+  </div>
+  <figure class="media" style="margin:0" aria-label="Ilustrasi: aliran sungai dengan node HULU dan HILIR, contoh status yang berganti">
+   <svg class="scene" viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+     <linearGradient id="rv" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity=".2"/></linearGradient>
+     <linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B28CF5"/><stop offset="1" stop-color="#6E9BFA"/></linearGradient>
+     <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="2" fill="#fff" opacity=".75"/></pattern>
+    </defs>
+    <rect x="292" y="22" width="92" height="92" fill="url(#dots)"/>
+    <path d="M-20 520 C 60 400 90 300 200 250 S 380 160 430 60 L430 520Z" fill="url(#deep)" opacity=".55"/>
+    <path d="M-20 520 C 80 430 120 340 220 300 S 390 230 430 150 L430 520Z" fill="#fff" opacity=".18"/>
+    <path id="river" d="M-20 120 C 30 150 60 180 90 190 C 150 215 220 250 300 300 S 400 380 430 430" fill="none" stroke="url(#rv)" stroke-width="26" stroke-linecap="round" opacity=".55"/>
+    <path d="M-20 120 C 30 150 60 180 90 190 C 150 215 220 250 300 300 S 400 380 430 430" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 9" opacity=".9"><animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1.6s" repeatCount="indefinite"/></path>
+    <path id="segment" d="M90 190 C 150 215 220 250 300 300" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity="0"/>
+    <path d="M-20 80 C 120 120 160 200 260 220 S 400 260 430 330" fill="none" stroke="#fff" stroke-width="1.2" opacity=".55"/>
+    <path d="M-20 200 C 60 240 110 330 170 370 S 300 430 420 520" fill="none" stroke="#fff" stroke-width="1.2" opacity=".45"/>
+    <g><circle cx="90" cy="190" r="9" fill="#fff"/><circle cx="90" cy="190" r="5" id="nHu" fill="#0F7A46"/><text x="78" y="216" font-size="13" font-weight="700" fill="#1E1B3A" font-family="Plus Jakarta Sans,system-ui">HULU</text></g>
+    <g><circle cx="300" cy="300" r="9" fill="#fff"/><circle cx="300" cy="300" r="5" id="nHi" fill="#0F7A46"/><text x="252" y="285" font-size="13" font-weight="700" fill="#1E1B3A" font-family="Plus Jakarta Sans,system-ui">HILIR</text></g>
+   </svg>
+   <div class="orb" aria-hidden="true"></div>
+   <div class="glass g1"><span class="cap" style="color:#3d3a5c">Arah aliran</span><br><b>HULU → HILIR</b>, selisih dibaca setelah τ = 12 menit</div>
+   <div class="glass g2" aria-live="polite">
+    <div class="row"><b>Node HILIR</b><span class="st s-AMAN" id="hst"></span></div>
+    <div class="vals"><div><small>pH</small><b id="vph">7,4</b></div><div><small>TDS ppm</small><b id="vtds">294</b></div><div><small>NTU</small><b id="vntu">25</b></div></div>
+    <div class="cap" id="hmsg" style="margin-top:6px;color:#3d3a5c">Contoh tampilan, data simulasi</div>
+   </div>
+  </figure>
+ </section>
+
+ <section class="shell bento" id="cara-kerja" aria-labelledby="h-benefit">
+  <div class="bl">
+   <div>
+    <h2 id="h-benefit">Cara kerja singkat</h2>
+    <p>Air yang lewat HULU tiba di HILIR kira-kira 12 menit kemudian. Sistem membandingkan massa air yang sama, jadi perubahan alami yang datang dari hulu tidak dihitung sebagai dugaan.</p>
+   </div>
+   <hr>
+   <div class="minis">
+    <div class="mini m"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h6M14 7h6M7 4v6M17 14v6M14 17h6M4 17h6"/></svg></span><b>Hulu dibanding hilir</b><p>Selisih Δ dihitung untuk lima parameter tiap menit.</p></div>
+    <div class="mini r"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3c3.5 4.4 6 7.7 6 10.6a6 6 0 0 1-12 0C6 10.7 8.5 7.4 12 3z"/></svg></span><b>Hujan dipisahkan</b><p>Naik di kedua node berarti hujan, bukan buangan.</p></div>
+   </div>
+   <a class="btn sec" href="dashboard.html">Coba mode demo<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  </div>
+  <div class="br" id="fitur">
+   <div class="bh"><h3 style="margin:0">Yang tersedia di dashboard</h3><div class="arrows"><button class="icb" id="prev" aria-label="Fitur sebelumnya"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="icb" id="next" aria-label="Fitur berikutnya"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div></div>
+   <div class="track" id="track" tabindex="0" aria-label="Daftar fitur, gunakan panah kiri dan kanan" role="region"></div>
+   <div class="metrics" role="list">
+    <div class="metric" role="listitem"><span class="ic"><svg viewBox="0 0 24 24"><path d="M10 3h4v10a4 4 0 1 1-4 0z"/><path d="M10 9h4"/></svg></span><div><b>5 × 2</b><span>parameter di dua node</span></div></div>
+    <div class="metric" role="listitem"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></span><div><b>2–3 mnt</b><span>dari buangan mulai sampai alarm*</span></div></div>
+    <div class="metric" role="listitem"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1-.4-8A6 6 0 0 1 18 8a3.5 3.5 0 0 1 0 7"/><path d="m9 19 6-6"/></svg></span><div><b>0 %</b><span>hujan yang terbaca BAHAYA*</span></div></div>
+   </div>
+   <p class="foot">*Hasil uji pada dataset sintetis yang dikalibrasi ke data terbitan Kali Surabaya, bukan pengukuran lapangan.</p>
+  </div>
+ </section>
+
+ <section class="shell show" id="batasan" aria-label="Sorotan sistem">
+  <article class="vis rose">
+   <svg class="bg" viewBox="0 0 300 340" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-10 250 C 80 200 120 90 310 40" fill="none" stroke="#fff" stroke-width="40" opacity=".25"/><path d="M-10 300 C 100 260 160 160 310 120" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/><path d="M-10 320 C 120 300 200 210 310 190" fill="none" stroke="#fff" stroke-width="1.5" opacity=".5"/><g fill="#fff" opacity=".7"><circle cx="30" cy="30" r="2"/><circle cx="52" cy="30" r="2"/><circle cx="74" cy="30" r="2"/><circle cx="30" cy="52" r="2"/><circle cx="52" cy="52" r="2"/><circle cx="74" cy="52" r="2"/></g></svg>
+   <div class="glass"><h3>Mode demo untuk juri</h3><p>Label DATA SIMULASI selalu tampil. Empat skenario: normal, hujan, pembuangan di hilir, sensor rusak.</p></div>
+  </article>
+  <article class="ed">
+   <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.1"/></svg></span>
+   <h3>Batasan yang kami tulis terbuka</h3>
+   <p>Status adalah peringatan dini berbasis sensor murah. Sistem hanya menyatakan nilai melampaui ambang acuan, bukan melanggar baku mutu. Penetapan pelanggaran adalah wewenang instansi setelah analisis laboratorium terakreditasi.</p>
+   <ul><li>Tidak mengukur DO, amonia, COD, BOD, logam berat, deterjen, atau zat warna.</li><li>Kekeruhan dibaca relatif terhadap baseline, tidak dikonversi ke TSS.</li></ul>
+   <a class="icb" href="dashboard.html#tentang" aria-label="Baca disclaimer lengkap di halaman Tentang sistem"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  </article>
+  <article class="vis blue">
+   <svg class="bg" viewBox="0 0 300 340" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-10 120 C 90 160 150 60 310 100" fill="none" stroke="#fff" stroke-width="50" opacity=".18"/><path d="M-10 170 C 90 210 160 110 310 150" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/><path d="M-10 200 C 90 240 170 140 310 190" fill="none" stroke="#fff" stroke-width="1.5" opacity=".45"/><g fill="#fff" opacity=".6"><circle cx="230" cy="250" r="2"/><circle cx="252" cy="250" r="2"/><circle cx="274" cy="250" r="2"/><circle cx="230" cy="272" r="2"/><circle cx="252" cy="272" r="2"/><circle cx="274" cy="272" r="2"/></g></svg>
+   <div class="glass"><h3>Alur data</h3><p>Data masuk lewat MQTT. Jika server AI belum siap, aturan cadangan di browser tetap jalan.</p><div class="flow"><span>Sensor</span><span>ESP32</span><span>MQTT</span><span>Analisis AI</span><span>Dashboard</span></div></div>
+  </article>
+ </section>
+ </main>
+
+ <footer class="shell">
+  <span>© 2026 KALI-Sentinel · BINUS Robotics Cup 2026 (AIoT)</span>
+  <nav aria-label="Tautan bawah"><a href="dashboard.html">Dashboard</a><a href="dashboard.html#log">Log peringatan</a><a href="dashboard.html#riwayat">Riwayat &amp; ekspor</a><a href="dashboard.html#tentang">Tentang &amp; disclaimer</a></nav>
+ </footer>
+</div>
+
+<div class="drawer" id="drawer" aria-hidden="true">
+ <div class="scrim" data-close></div>
+ <div class="panel" role="dialog" aria-modal="true" aria-label="Menu">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="logo"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/><path d="M3 15c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/></svg></i>KALI-Sentinel</span><button class="icb" data-close aria-label="Tutup menu"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <a href="#cara-kerja" data-close>Cara kerja</a><a href="#fitur" data-close>Fitur</a><a href="#batasan" data-close>Batasan</a><a href="dashboard.html#tentang">Arsitektur</a><a href="dashboard.html#riwayat">Data</a>
+  <a class="btn pri" href="dashboard.html" style="margin-top:8px">Buka dashboard<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+ </div>
+</div>
+
+<script>
+{
+const $=s=>document.querySelector(s);
+/* fitur: data, dirender sekali */
+const FEAT=[
+ {c:'blue',bar:'#3B73E0',t:'Banner status utama',d:'AMAN, WASPADA, BAHAYA, atau INFO HUJAN, lengkap dengan alasan dan waktu.',i:'<path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17v.1"/>'},
+ {c:'mint',bar:'#1E9E8F',t:'Grafik hulu vs hilir',d:'Toggle τ menggeser garis HULU agar massa air yang sama dibandingkan.',i:'<path d="M3 17l5-6 4 3 8-9"/><path d="M3 21h18"/>'},
+ {c:'lav',bar:'#7C5CE0',t:'Skor anomali AI',d:'Isolation Forest memberi skor 0–1 dengan ambang θ dari server.',i:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>'},
+ {c:'rose',bar:'#D9486A',t:'Log dan tindak lanjut',d:'Setiap kejadian tercatat, bisa ditandai sudah ditinjau beserta catatan.',i:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.1M3 12h.1M3 18h.1"/>'},
+ {c:'blue',bar:'#3B73E0',t:'Kesehatan perangkat',d:'Sensor macet atau error tampil sebagai perlu perawatan, bukan pencemaran.',i:'<path d="M14.6 6.4a4 4 0 0 0-5.2 5.2L3.6 17.4l3 3 5.8-5.8a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.3-.7-.7-2.3z"/>'},
+ {c:'mint',bar:'#1E9E8F',t:'Riwayat dan ekspor CSV',d:'Pilih tanggal dan node, unduh dengan kolom yang sama seperti JSON mentah.',i:'<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'}];
+const tr=$('#track');
+tr.innerHTML=FEAT.map((f,i)=>`<div class="feat" role="group" aria-label="Fitur ${i+1} dari ${FEAT.length}"><div class="fc ${f.c}"><svg class="wave" viewBox="0 0 300 220" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120 C 80 60 160 170 300 70 L300 0 L0 0Z" fill="#fff" opacity=".18"/><path d="M0 150 C 90 100 170 190 300 110" fill="none" stroke="#fff" stroke-width="1.4" opacity=".6"/></svg><span class="ic"><svg viewBox="0 0 24 24">${f.i}</svg></span><h3>${f.t}</h3><p>${f.d}</p></div><div class="prog" aria-hidden="true"><i style="width:${Math.round((i+1)/FEAT.length*100)}%;background:${f.bar}"></i></div></div>`).join('');
+const step=()=>tr.firstElementChild.getBoundingClientRect().width+16;
+const upd=()=>{$('#prev').disabled=tr.scrollLeft<4;$('#next').disabled=tr.scrollLeft+tr.clientWidth>=tr.scrollWidth-4};
+$('#prev').addEventListener('click',()=>tr.scrollBy({left:-step(),behavior:'smooth'}));
+$('#next').addEventListener('click',()=>tr.scrollBy({left:step(),behavior:'smooth'}));
+tr.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();tr.scrollBy({left:step(),behavior:'smooth'})}if(e.key==='ArrowLeft'){e.preventDefault();tr.scrollBy({left:-step(),behavior:'smooth'})}});
+tr.addEventListener('scroll',upd,{passive:true});addEventListener('resize',upd);upd();
+
+/* chip status contoh di hero: berganti tiap 3,2 detik */
+const IC={AMAN:'<circle cx="12" cy="12" r="9.5"/><path d="M7.6 12.4l3 3 5.8-6.2"/>',INFO:'<path d="M12 3.2c3.6 4.6 6.2 8 6.2 11a6.2 6.2 0 0 1-12.4 0c0-3 2.6-6.4 6.2-11z"/>',WASPADA:'<path d="M12 3.2 22.2 20.6H1.8z"/><path d="M12 9.6v5M12 17.6v.1"/>',BAHAYA:'<path d="M8.1 2.6h7.8l5.5 5.5v7.8l-5.5 5.5H8.1l-5.5-5.5V8.1z"/><path d="M12 7.4v6.2M12 16.6v.1"/>'};
+const SEQ=[
+ {s:'AMAN',l:'AMAN',ph:'7,4',tds:'294',ntu:'25',m:'Hulu dan hilir bergerak seiring',hu:'#0F7A46',hi:'#0F7A46',seg:0},
+ {s:'INFO',l:'INFO HUJAN',ph:'7,3',tds:'262',ntu:'268',m:'Naik di kedua node: hujan',hu:'#2156D4',hi:'#2156D4',seg:0},
+ {s:'WASPADA',l:'WASPADA',ph:'7,1',tds:'512',ntu:'61',m:'TDS hanya naik di HILIR',hu:'#0F7A46',hi:'#E0A400',seg:.5},
+ {s:'BAHAYA',l:'BAHAYA',ph:'5,7',tds:'913',ntu:'214',m:'Prioritas inspeksi: segmen HULU–HILIR',hu:'#0F7A46',hi:'#C4231A',seg:.95}];
+let k=0;const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function show(){const x=SEQ[k];const c=$('#hst');c.className='st s-'+x.s;c.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${IC[x.s]}</svg>${x.l}`;$('#vph').textContent=x.ph;$('#vtds').textContent=x.tds;$('#vntu').textContent=x.ntu;$('#hmsg').textContent=x.m+' · contoh, data simulasi';$('#nHu').setAttribute('fill',x.hu);$('#nHi').setAttribute('fill',x.hi);const sg=$('#segment');sg.setAttribute('opacity',x.seg);sg.setAttribute('stroke',x.s==='BAHAYA'?'#FF8C9E':'#FFE08A')}
+show();if(!reduce)setInterval(()=>{k=(k+1)%SEQ.length;show()},3200);
+
+/* drawer */
+const dr=$('#drawer'),bg=$('#burger');
+const openD=o=>{dr.classList.toggle('open',o);dr.setAttribute('aria-hidden',String(!o));bg.setAttribute('aria-expanded',String(o));if(o)dr.querySelector('.panel a').focus();else bg.focus()};
+bg.addEventListener('click',()=>openD(true));
+dr.addEventListener('click',e=>{if(e.target.closest('[data-close]'))openD(false)});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&dr.classList.contains('open'))openD(false)});
+
+/* scroll reveal: hanya untuk elemen di bawah layar pertama, jadi isi selalu terlihat tanpa JS */
+if(!reduce&&'IntersectionObserver' in window){const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target)}}),{threshold:.12});
+ document.querySelectorAll('.bento .bl,.bento .br,.show>article').forEach((el,i)=>{if(el.getBoundingClientRect().top>innerHeight){el.classList.add('rv');el.style.animationDelay=(i%3)*.08+'s';io.observe(el)}})}
+}
+</script>
+</body>
+</html>

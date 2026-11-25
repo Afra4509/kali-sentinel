@@ -1,0 +1,14 @@
+{
+  "model": "XGBoost",
+  "depth": 6,
+  "leaf": 8,
+  "ambang_sensor": 0.4,
+  "macro_f1_cv": 0.7776068919994513,
+  "train": 51462,
+  "test": 57180,
+  "seed_model": 42,
+  "av_precision_iso": {
+    "Isolation Forest lama": 0.7445105053912775,
+    "Isolation Forest v2": 0.6165187927979737
+  }
+}
