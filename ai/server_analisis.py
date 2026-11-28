@@ -1,12 +1,12 @@
 """
 server_analisis.py
-Server Python KALI-Sentinel: subscribe data node lewat MQTT, hitung skor Isolation Forest
-dan pola Random Forest, lalu publish ke topik kalisentinel/analisis (format sesuai brief).
+Server Python Jagakali: subscribe data node lewat MQTT, hitung skor Isolation Forest
+dan pola Random Forest, lalu publish ke topik jagakali/analisis (format sesuai brief).
 
 Mode:
-  python server_analisis.py                       # jalan sungguhan ke EMQX Cloud (butuh: pip install paho-mqtt)
+  python server_analisis.py                       # jalan sungguhan, butuh: pip install paho-mqtt
   python server_analisis.py --replay data.csv     # uji offline tanpa broker: putar ulang CSV, cetak hasil
-  python server_analisis.py --broker h2117224.ala.us-east-1.emqxsl.com --port 8883 --username USER --password PASS
+  python server_analisis.py --broker 127.0.0.1 --port 1883
 
 Model dibaca dari folder models/ (hasil train_model.py).
 """
@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 from collections import deque
@@ -24,7 +23,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from kalisentinel_core import PARAMS, build_features, decide_status, score_from_raw, to_grid
+from jagakali_core import PARAMS, build_features, decide_status, score_from_raw, to_grid
 
 HERE = Path(__file__).resolve().parent
 CFG = json.loads((HERE / "models" / "model_config.json").read_text())
@@ -35,7 +34,7 @@ KEEP = pd.Timedelta(hours=4)          # panjang buffer per node
 
 
 class Analyzer:
-    def __init__(self, prefix: str = "kalisentinel"):
+    def __init__(self, prefix: str = "jagakali"):
         self.prefix = prefix
         self.buf = {"HULU": deque(), "HILIR": deque()}
         self.last_minute = None
@@ -84,10 +83,7 @@ class Analyzer:
         score = float(score_from_raw(-ISO.score_samples(x_if), CFG["score_c"], CFG["score_k"])[0])
         pat_ml = str(RF.predict(x_rf)[0])
         proba = float(RF.predict_proba(x_rf).max())
-        d = decide_status(r, score, CFG["threshold"], None, CFG["rules"])
-        if d["status"] in ("AMAN", "INFO") and pat_ml == "sensor_rusak" and proba >= 0.6:
-            d["pattern"] = "sensor_perlu_perawatan"
-            d["message"] += " Model menduga ada sensor yang perlu dibersihkan atau dikalibrasi."
+        d = decide_status(r, score, CFG["threshold"], pat_ml, CFG["rules"], proba)
         return {
             "timestamp": f.index[-1].isoformat(),
             "status": d["status"],
@@ -95,7 +91,7 @@ class Analyzer:
             "threshold": CFG["threshold"],
             "A_t": d["A_t"], "N_t": d["N_t"],
             "tau_min": CFG["rules"]["tau_min"],
-            "delta": {p: round(float(r[f"d_{p}"]), 2) for p in PARAMS},
+            "delta": {p: (round(float(r[f"d_{p}"]), 2) if np.isfinite(r[f"d_{p}"]) else None) for p in PARAMS},
             "pattern": d["pattern"],
             "pattern_ml": pat_ml, "pattern_ml_confidence": round(proba, 2),
             "sensor_health": d["sensor_health"],
@@ -117,18 +113,7 @@ def replay(path: str):
     print(f"selesai dalam {time.time() - t0:.1f} detik")
 
 
-def load_env(path: Path) -> None:
-    if not path.is_file():
-        return
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        os.environ.setdefault(k.strip(), v.strip().strip("'\""))
-
-
-def run(broker: str, port: int, prefix: str, username: str = "", password: str = "", use_tls: bool | None = None):
+def run(broker: str, port: int, prefix: str):
     try:
         import paho.mqtt.client as mqtt
     except ImportError:
@@ -139,15 +124,7 @@ def run(broker: str, port: int, prefix: str, username: str = "", password: str =
     except AttributeError:  # paho-mqtt 1.x
         client = mqtt.Client(client_id=f"ks-analisis-{int(time.time())}")
 
-    if (port in (8883, 8884)) if use_tls is None else use_tls:
-        client.tls_set()
-    if username:
-        client.username_pw_set(username, password)
-
-    def on_connect(c, _u, _f, rc, *_):
-        if getattr(rc, "is_failure", False) or (isinstance(rc, int) and rc != 0):
-            print(f"koneksi ke {broker}:{port} ditolak ({rc})")
-            return
+    def on_connect(c, *_):
         c.subscribe([(f"{prefix}/node/HULU", 1), (f"{prefix}/node/HILIR", 1)])
         print(f"terhubung ke {broker}:{port}, menunggu data ...")
 
@@ -168,14 +145,10 @@ def run(broker: str, port: int, prefix: str, username: str = "", password: str =
 
 
 if __name__ == "__main__":
-    load_env(HERE.parent / ".env")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--broker", default=os.environ.get("MQTT_HOST", "h2117224.ala.us-east-1.emqxsl.com"))
-    ap.add_argument("--port", type=int, default=int(os.environ.get("MQTT_TLS_PORT", "8883")))
-    ap.add_argument("--prefix", default=os.environ.get("MQTT_PREFIX", "kalisentinel"))
-    ap.add_argument("--username", default=os.environ.get("MQTT_USERNAME", ""))
-    ap.add_argument("--password", default=os.environ.get("MQTT_PASSWORD", ""))
-    ap.add_argument("--no-tls", action="store_true", help="nonaktifkan TLS (mis. untuk broker TCP 1883)")
+    ap.add_argument("--broker", default="127.0.0.1")
+    ap.add_argument("--port", type=int, default=1883)
+    ap.add_argument("--prefix", default="jagakali")
     ap.add_argument("--replay", help="putar ulang CSV tanpa broker")
     a = ap.parse_args()
-    replay(a.replay) if a.replay else run(a.broker, a.port, a.prefix, a.username, a.password, False if a.no_tls else None)
+    replay(a.replay) if a.replay else run(a.broker, a.port, a.prefix)

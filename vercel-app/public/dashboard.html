@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jagakali Dashboard</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<script>document.documentElement.classList.add('js');setTimeout(function(){document.documentElement.classList.add('ready')},3600)</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: ruang kendali sungai dalam design system soft-gradient tim; status tetap paling keras
+   IDEA papan stasiun duga air: tiap baris mengalir kiri ke kanan, HULU → Δ → HILIR
+   PICTURE kartu status bergradasi di atas, lalu grafik Hulu vs Hilir dengan penyelarasan τ
+   COLOUR kabut #EDF2F3, panel putih bergaris, navy #0B1F2E, teal #0E6E78 untuk HILIR dan aksi; warna status hanya untuk status
+   TYPE Outfit untuk judul dan angka besar, IBM Plex Sans untuk teks
+   LAYOUT laptop: kartu status | baris parameter + grafik | skor, perangkat, segmen | log. HP: bertumpuk */
+:root{color-scheme:light;
+--bg:#EDF2F3;--panel:#FFFFFF;--soft:#F5F8F8;--sunk:#E4ECEE;--glass:rgba(237,242,243,.86);
+--ink:#0B1F2E;--mute:#4A6070;--rule:#D3DEE1;
+--hu:#9FB0B6;--hi:#0E6E78;
+--ok:#0F7A46;--warn:#8A5F00;--bad:#C4231A;--info:#2156D4;--gray:#6E7E86;
+--teal:#0E6E78;--teal-d:#0A565E;--cyan:#12A5B5;
+--sh:none;--sh-c:none;--r:14px;--ease:cubic-bezier(.22,1,.36,1);--mono:"IBM Plex Sans",system-ui,sans-serif}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:140px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
+a{color:var(--hi);text-underline-offset:3px}
+button,input,select{font:inherit}
+:focus-visible{outline:2px solid var(--hi);outline-offset:2px}
+.num,.cv b,.dl,.big,.clock,td.n,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px)}
+.bar{display:flex;align-items:center;gap:8px 18px;padding:0 max(2.5vw,16px);min-height:60px;border-bottom:1px solid var(--rule)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:17px;letter-spacing:-.02em;color:var(--ink);text-decoration:none;flex:none}
+.mark{width:32px;height:32px;padding:6px;border-radius:10px;background:var(--ink);fill:none;stroke:var(--bg);stroke-width:2.6;stroke-linecap:round}
+.mark circle{fill:var(--hi);stroke:none}
+.nav{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
+.nav a{flex:none;padding:8px 12px;border-radius:999px;color:var(--mute);text-decoration:none;font-weight:500;white-space:nowrap;transition:color .2s,background .2s}
+.nav a:hover{color:var(--ink)}
+.nav a[aria-current=page]{color:var(--ink);background:var(--panel);box-shadow:var(--sh)}
+.right{display:flex;align-items:center;gap:10px;flex:none}
+.clock{font-size:14px;font-weight:500;white-space:nowrap;color:var(--mute)}
+.seg{display:inline-flex;border-radius:999px;padding:3px;gap:2px;background:var(--sunk)}
+.seg button{border:0;background:none;color:var(--mute);font-weight:600;font-size:14px;padding:6px 13px;border-radius:999px;cursor:pointer;min-height:34px;transition:background .2s,color .2s}
+.seg button[aria-pressed=true]{background:var(--panel);color:var(--ink);box-shadow:var(--sh)}
+.demo,.livebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px max(2.5vw,16px);border-bottom:1px solid var(--rule)}
+body.is-live .demo,body.is-demo .livebar{display:none}
+.sim{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13px;padding:7px 12px;border-radius:999px;color:#1b1400;background:#ffd84d;white-space:nowrap}
+.sim::before{content:"";width:8px;height:8px;border-radius:50%;background:#1b1400;animation:blink 1.6s steps(2,start) infinite}
+@keyframes blink{to{opacity:.15}}
+.scen{display:flex;gap:6px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);font-weight:600;font-size:14px;padding:8px 14px;border-radius:999px;cursor:pointer;min-height:38px;white-space:nowrap;text-decoration:none;transition:transform .15s,border-color .2s,background .2s}
+.btn:hover{border-color:var(--mute)}
+.btn:active{transform:scale(.97)}
+.btn[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.pri{background:var(--hi);border-color:var(--hi);color:#fff}
+.btn.sm{min-height:34px;padding:5px 12px;font-size:13.5px}
+.file{position:relative}.file input{position:absolute;opacity:0;width:1px;height:1px}
+.push{margin-left:auto}
+.conn{font-weight:600}.conn i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gray);margin-right:7px}
+.conn.on i{background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 22%,transparent)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:12.5px;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.chip svg,.badge svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.s-AMAN{--sc:#0f7a46;background:#0f7a46;color:#fff}.s-WASPADA{--sc:#f2b705;background:#f2b705;color:#1b1400}.s-BAHAYA{--sc:#c4231a;background:#c4231a;color:#fff}.s-INFO{--sc:#2156d4;background:#2156d4;color:#fff}.s-MENUNGGU{--sc:#5c6b70;background:#5c6b70;color:#fff}
+.view{display:none}.view.on{display:block}
+.wrap{padding:18px max(2.5vw,16px) 32px;display:grid;gap:16px;max-width:1520px;margin:0 auto}
+.on .wrap>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.on .wrap>*:nth-child(2){animation-delay:.05s}.on .wrap>*:nth-child(3){animation-delay:.1s}.on .wrap>*:nth-child(4){animation-delay:.15s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+.banner{position:relative;overflow:hidden;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:12px 24px;padding:20px 24px;border-radius:22px;transition:background-color .6s,color .6s;box-shadow:0 18px 40px -22px var(--sc)}
+.banner::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 140% at 0% 0%,rgb(255 255 255/.22),transparent 55%);pointer-events:none}
+.bi{width:56px;height:56px;padding:12px;border-radius:50%;background:rgb(255 255 255/.18);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.s-WASPADA .bi{background:rgb(0 0 0/.08)}
+.bl b{display:block;font-size:clamp(32px,3.6vw,52px);line-height:.95;letter-spacing:-.035em;font-weight:700;white-space:nowrap}
+.bl b.pop{animation:pop .5s cubic-bezier(.2,.9,.25,1.2)}
+@keyframes pop{from{transform:scale(.94);opacity:.4}}
+.bl span{display:block;margin-top:6px;font-weight:600;font-size:14px;white-space:nowrap;opacity:.9}
+.bm{font-size:17px;line-height:1.45;max-width:64ch;font-weight:500;text-wrap:pretty}
+.bx{display:grid;grid-template-columns:repeat(3,auto);gap:6px;justify-content:end}
+.bx div{padding:8px 12px;border-radius:12px;background:rgb(255 255 255/.16);text-align:left;min-width:74px}
+.s-WASPADA .bx div{background:rgb(0 0 0/.07)}
+.bx small{display:block;font-size:12px;opacity:.85;font-weight:600}
+.bx b{font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-.02em}
+.bx p{grid-column:1/-1;margin:2px 0 0;font-size:12.5px;opacity:.85;text-align:right}
+.dash{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1fr);gap:16px}
+.row2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr) minmax(0,1fr);gap:16px}
+.panel{border:1px solid var(--rule);border-radius:var(--r);background:var(--panel);padding:16px 18px;box-shadow:var(--sh)}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:clamp(30px,3.6vw,46px);line-height:1.02;letter-spacing:-.035em;margin:6px 0 8px;font-weight:650;text-wrap:balance}
+h2{font-size:16px;line-height:1.25;margin:0;font-weight:600;letter-spacing:-.015em;text-wrap:balance}
+h3{font-size:15px;margin:0 0 4px;font-weight:600}
+.mute{color:var(--mute);font-size:13px}
+.lead{font-size:16px;max-width:70ch;color:var(--mute);margin:0}
+.mxh,.mrow{display:grid;grid-template-columns:86px minmax(0,1fr) 86px minmax(0,1fr);gap:8px}
+.mxh{font-size:12.5px;font-weight:600;color:var(--mute);padding:0 4px 6px}
+.mxh span:nth-child(3){text-align:center}
+.mrow+.mrow{margin-top:6px}
+.pn{display:flex;flex-direction:column;justify-content:center;line-height:1.25;padding-left:2px}
+.pn b{font-weight:600}.pn small{color:var(--mute);font-size:12.5px}
+.cell{position:relative;display:grid;grid-template-columns:auto minmax(36px,1fr);grid-template-areas:"v s" "m m";column-gap:10px;align-items:center;border:1px solid var(--rule);border-radius:14px;padding:7px 11px 6px;background:var(--soft);transition:border-color .4s,background-color .4s}
+.cv{grid-area:v;white-space:nowrap}.cv b{font-size:21px;font-weight:600}.cv span{font-size:12.5px;color:var(--mute);margin-left:4px}
+.nd{display:none;font-style:normal;font-size:12px;font-weight:700;color:var(--mute)}
+.sp{grid-area:s;width:100%;height:28px}
+.sp polyline{fill:none;stroke:var(--hu);stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.cell.hi .sp polyline{stroke:var(--hi)}
+.cm{grid-area:m;display:flex;gap:8px;justify-content:space-between;font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden}
+.cm time{font-family:var(--mono)}
+.tg{display:inline-flex;gap:4px;align-items:center;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.tg svg{flex:none;width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.lv-near{border-color:#e0a400;background:color-mix(in srgb,#f2b705 9%,var(--panel))}.lv-near .tg{color:var(--warn)}
+.lv-over{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 8%,var(--panel))}.lv-over .tg{color:var(--bad)}.cell.lv-over .sp polyline{stroke:var(--bad)}
+.lv-info{border-color:var(--info);background:color-mix(in srgb,var(--info) 7%,var(--panel))}.lv-info .tg{color:var(--info)}
+.lv-maint{border-color:var(--gray);border-style:dashed;background:var(--panel)}.lv-maint .tg{color:var(--mute)}
+.dl{display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600;white-space:nowrap;border-radius:14px;background:var(--sunk);line-height:1.2;padding:4px;font-size:14px;transition:background-color .4s,color .4s}
+.dl small{font-size:12px;color:var(--mute);font-weight:500;letter-spacing:0}
+.dl .ar{font-size:16px}
+.d-warn{color:var(--warn);background:color-mix(in srgb,#f2b705 16%,var(--sunk))}.d-bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--sunk))}
+.ctl{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.pill{display:inline-flex;gap:2px;flex-wrap:wrap;padding:3px;border-radius:999px;background:var(--sunk)}
+.pill button{border:0;background:none;color:var(--mute);font-weight:600;font-size:13px;padding:5px 11px;border-radius:999px;cursor:pointer;min-height:32px;transition:background .2s,color .2s}
+.pill button[aria-pressed=true]{color:var(--ink);background:var(--panel);box-shadow:var(--sh)}
+.tog{display:inline-flex;gap:8px;align-items:center;cursor:pointer;font-weight:600;font-size:13.5px;min-height:36px}
+.tog input{appearance:none;-webkit-appearance:none;width:38px;height:22px;border-radius:11px;background:var(--rule);position:relative;margin:0;cursor:pointer;transition:background .2s;flex:none}
+.tog input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0/.25);transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
+.tog input:checked{background:var(--hi)}.tog input:checked::after{transform:translateX(16px)}
+.legend{display:flex;gap:14px;font-size:12.5px;color:var(--mute);flex-wrap:wrap}
+.k{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--hu)}.k.hi{background:var(--hi);height:4px}
+.fig{position:relative;min-height:250px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.fig.s{min-height:150px}
+svg text{font:12.5px "IBM Plex Sans",system-ui,sans-serif;fill:var(--mute);paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round}
+.gl{stroke:var(--rule);stroke-width:1}
+.thl{stroke:var(--bad);stroke-width:1.3;stroke-dasharray:5 4}
+.tht{fill:var(--bad)}
+.lhu{fill:none;stroke:var(--hu);stroke-width:1.8;stroke-linejoin:round}
+.lhi{fill:none;stroke:var(--hi);stroke-width:2.6;stroke-linejoin:round}
+.ahi{fill:var(--hi);opacity:.1;stroke:none}
+.ldh{fill:var(--hi);font-weight:700;font-family:var(--mono)}.ldu{font-weight:600;font-family:var(--mono)}
+.guide{stroke:var(--ink);stroke-width:1;opacity:0}
+.tip{position:absolute;top:0;left:0;pointer-events:none;opacity:0;background:var(--ink);color:var(--bg);padding:9px 11px;border-radius:12px;font-size:13px;display:grid;gap:2px;white-space:nowrap;transition:opacity .12s;z-index:2;box-shadow:0 10px 30px -10px rgb(0 0 0/.4)}
+.tip small{opacity:.75}
+.scw{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:14px}
+.big{font-size:46px;font-weight:600;line-height:1}
+.big.hot{color:var(--bad)}
+.rd{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.hn{display:grid;gap:3px;padding:12px 0;border-top:1px solid var(--rule);font-size:14px}
+.hn:first-child{border-top:0;padding-top:0}
+.hn .t{display:flex;justify-content:space-between;gap:8px;font-weight:600;font-size:15px}
+.dot{position:relative;display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:8px}
+.dot:not(.off)::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--ok);animation:ping 2s ease-out infinite}
+@keyframes ping{from{transform:scale(.5);opacity:.8}to{transform:scale(1.6);opacity:0}}
+.dot.off{background:var(--gray)}
+.flag{display:flex;gap:6px;align-items:flex-start;color:var(--warn);font-weight:600}
+.flag.soft{color:var(--mute);font-weight:500}
+.flag svg{flex:none;width:16px;height:16px;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.map svg{width:100%;height:auto;display:block}
+.riv{fill:none;stroke:color-mix(in srgb,var(--hi) 20%,var(--panel));stroke-width:18;stroke-linecap:round;transition:stroke .5s}
+.rivc{fill:none;stroke:var(--panel);stroke-width:1.5;stroke-dasharray:2 7;opacity:.9;animation:flow 1.6s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-9}}
+.mk{cursor:pointer}.mk circle{stroke:var(--panel);stroke-width:3}
+.mk text{fill:var(--ink);font-weight:700}
+.minfo{font-size:13.5px;margin-top:6px;min-height:42px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12.5px;color:var(--mute);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--rule);vertical-align:middle}
+tbody tr{transition:background .2s}tbody tr:hover{background:var(--soft)}
+td.nw,td.n{white-space:nowrap}td.n{text-align:right}td.nw{font-family:var(--mono);font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:12.5px;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.okt{color:var(--ok);font-weight:600}
+.rv{display:flex;gap:6px;flex-wrap:wrap}.rv input{min-height:34px;padding:6px 10px;max-width:220px}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:4px 0 14px}
+.fld{display:grid;gap:4px}.fld label{font-weight:600;font-size:13.5px}.fld small{color:var(--mute);font-size:12.5px}
+input[type=number],input[type=text],input[type=date],select{font-size:16px;padding:8px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--panel);color:var(--ink);min-height:42px;width:100%;transition:border-color .2s}
+input:hover,select:hover{border-color:var(--mute)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px 22px}
+.flow{display:flex;align-items:stretch;margin:6px 0 4px}
+.st{flex:1;border:1px solid var(--rule);border-radius:16px;padding:16px;background:var(--soft);display:grid;gap:6px;align-content:start}
+.st svg{width:38px;height:38px;padding:8px;border-radius:12px;background:var(--panel);fill:none;stroke:var(--hi);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.st p{margin:0;font-size:13.5px;color:var(--mute)}
+.st code{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+.arw{flex:none;width:30px;display:grid;place-items:center}
+.arw svg{width:20px;height:20px;fill:none;stroke:var(--hi);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.cols{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+.disc{border-radius:var(--r);padding:18px 20px;font-size:16px;background:var(--ink);color:var(--bg)}
+.disc h2{margin-bottom:6px}
+.disc p{margin:0;opacity:.92}
+.toasts{position:fixed;right:16px;bottom:16px;display:grid;gap:8px;z-index:40;width:min(380px,calc(100vw - 32px))}
+.toast{background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:16px;font-size:14px;box-shadow:0 14px 34px -12px rgb(0 0 0/.45);display:flex;gap:10px;align-items:flex-start;animation:tin .35s cubic-bezier(.2,.9,.25,1.2)}
+.toast svg{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
+@keyframes tin{from{transform:translateY(12px) scale(.97);opacity:0}}
+footer{padding:18px max(2.5vw,16px) 28px;color:var(--mute);font-size:13px;border-top:1px solid var(--rule);display:flex;gap:6px 18px;flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media(max-width:1100px){.row2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.row2>.mapp{grid-column:1/-1}}
+@media(max-width:980px){.dash{grid-template-columns:minmax(0,1fr)}.bar{flex-wrap:wrap;padding-block:8px}.nav{order:3;flex-basis:100%}.right{margin-left:auto}.banner{grid-template-columns:auto minmax(0,1fr)}.bm,.bx{grid-column:1/-1}.bx{justify-content:start}.bx p{text-align:left}.cols{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:760px){.flow{flex-direction:column}.arw{width:auto;height:26px}.arw svg{transform:rotate(90deg)}}
+@media(max-width:600px){
+ .top{position:static}.sim{position:fixed;left:12px;bottom:12px;z-index:30;box-shadow:0 6px 18px rgb(0 0 0/.25)}body.is-demo{padding-bottom:56px}
+ .row2{grid-template-columns:minmax(0,1fr)}
+ .clock{display:none}
+ .banner{padding:18px;border-radius:18px}
+ .bx{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.bx div{min-width:0}
+ .mxh{display:none}.mrow{grid-template-columns:minmax(0,1fr) 66px minmax(0,1fr);row-gap:4px}.mrow+.mrow{margin-top:12px}
+ .pn{grid-column:1/-1;flex-direction:row;gap:8px;align-items:baseline}
+ .cell{grid-template-columns:minmax(0,1fr);grid-template-areas:"n" "v" "s" "m"}.nd{display:block;grid-area:n}
+ .cm{flex-direction:column;gap:0}
+ .scw{grid-template-columns:minmax(0,1fr)}
+ .bi{width:44px;height:44px;padding:9px}.bm{font-size:16px}
+ table{font-size:13px}th,td{padding:6px 4px}
+ .stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--rule)}.stack td{display:flex;justify-content:space-between;gap:12px;border:0;padding:3px 0;text-align:right}.stack td::before{content:attr(data-l);color:var(--mute);font-weight:600;text-align:left}.stack td.n{white-space:normal}
+}
+/* ---- identitas Jagakali: kabut, navy, teal; garis tegas, bukan bayangan ---- */
+.num,.cv b,.dl,.big,.clock,td.n,.mono,td.nw,.cm time,.bx b,.ldh,.ldu{font-variant-numeric:tabular-nums;letter-spacing:0}
+h1,h2,h3,.bl b,.big,.cv b,.bx b{font-family:"Outfit",system-ui,sans-serif}
+.cv b,.big,.bx b{font-weight:600}
+.top{background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.bar{min-height:64px;border-bottom:1px solid var(--rule)}
+.brand img{display:block;height:28px;width:auto}
+.nav a{font-size:14.5px;border-radius:8px}
+.nav a[aria-current=page]{background:transparent;box-shadow:inset 0 -2px 0 var(--teal);border-radius:0;color:var(--ink)}
+.seg{background:var(--sunk);border-radius:10px}.seg button{border-radius:8px}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff;box-shadow:none}
+.demo,.livebar{background:transparent;border-bottom:1px solid var(--rule)}
+.sim{border-radius:6px;font-size:12.5px;letter-spacing:.02em}
+.btn{border-radius:10px;border:1.5px solid var(--rule);font-weight:600}
+.btn:hover{border-color:var(--ink);background:var(--panel)}
+.btn.pri,.btn.pri:hover{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.pri:hover{background:var(--teal-d);border-color:var(--teal-d)}
+.btn[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip,.badge{border-radius:6px}
+.wrap{max-width:1440px}
+.panel{border:1px solid var(--rule);border-radius:var(--r);box-shadow:none;padding:18px 20px}
+h1{font-size:clamp(34px,4vw,52px);line-height:1.05;letter-spacing:-.02em;font-weight:700}
+h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
+/* banner: blok status penuh, dengan garis muka air yang bergerak pelan di tepi bawah */
+.banner{border-radius:18px;padding:22px 26px 30px;box-shadow:none}
+.banner::after{content:"";position:absolute;inset:auto 0 0 0;height:14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='14' viewBox='0 0 120 14'%3E%3Cpath d='M0 7 Q15 1 30 7 T60 7 T90 7 T120 7 V14 H0Z' fill='white' fill-opacity='.16'/%3E%3C/svg%3E") repeat-x 0 0/120px 14px;animation:tide 6s linear infinite}
+@keyframes tide{to{background-position:120px 0}}
+.s-AMAN{--sc:#0F7A46;background:#0F7A46}.s-WASPADA{--sc:#F2B705;background:#F2B705}.s-BAHAYA{--sc:#C4231A;background:#C4231A}.s-INFO{--sc:#2156D4;background:#2156D4}.s-MENUNGGU{--sc:#5D6B73;background:#5D6B73}
+.banner.s-BAHAYA .bi{animation:beat 1.6s var(--ease) infinite}
+@keyframes beat{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.45)}60%{box-shadow:0 0 0 14px rgba(255,255,255,0)}}
+.bx div{border-radius:10px;background:rgba(255,255,255,.14)}
+.s-WASPADA .bx div{background:rgba(11,31,46,.08)}
+.bi{background:rgba(255,255,255,.18);border-radius:12px}
+.cell{border-radius:10px;background:var(--panel);border:1px solid var(--rule)}
+.cell.lv-over{background:#FBEDEC}.cell.lv-near{background:#FFF7DF}.cell.lv-info{background:#EAF0FC}
+.dl{border-radius:10px;background:var(--soft)}
+.pill{background:var(--sunk);border-radius:10px}.pill button{border-radius:8px}
+.pill button[aria-pressed=true]{background:var(--panel);box-shadow:0 0 0 1px var(--rule)}
+.tog input:checked{background:var(--teal)}
+.ahi{fill:var(--cyan);opacity:.12}
+.lhi{stroke:var(--teal)}
+.st{border-radius:12px;background:var(--soft);border:1px solid var(--rule)}
+.st svg{border-radius:10px;background:var(--panel)}
+.disc{background:var(--ink);color:#E6EEF0;border:0;border-radius:18px}
+.disc h2{color:#fff}
+.toast{border-radius:12px;background:var(--ink)}
+input[type=number],input[type=text],input[type=date],select{border-radius:10px}
+.riv{stroke:#BFE3E8}
+.on .wrap>*{animation:none}
+.on .wrap>.banner{animation:rise .6s var(--ease) both}
+footer{border-top:1px solid var(--rule)}
+
+/* banjir warna saat status berganti */
+.banner .flood{position:absolute;inset:0;z-index:0;clip-path:circle(0px at 0 0);pointer-events:none}
+.banner>*:not(.flood){position:relative;z-index:1}
+.banner::after{z-index:1}
+.bico{display:block;line-height:0}
+/* transisi ombak antarhalaman */
+#tide{position:fixed;inset:0;z-index:100;display:none}
+html.js #tide{display:block;background:#0B1F2E;animation:tidefail 0s 3.2s forwards}
+html.js #tide.on{background:transparent}
+#tide canvas{position:absolute;inset:0;display:block}
+html.js.ready #tide:not(.on){display:none}
+@keyframes tidefail{to{visibility:hidden}}
+/* ---- v7: indikator geser, garis grafik tergambar, peta hidup ---- */
+.seg,.pill,.nav{position:relative}
+.sl{position:absolute;left:0;top:0;width:0;height:0;border-radius:8px;pointer-events:none;z-index:0;transition:transform .5s var(--ease),width .5s var(--ease),height .5s var(--ease),opacity .25s}
+.seg .sl{background:var(--ink)}
+.pill .sl{background:var(--panel);box-shadow:0 0 0 1px var(--rule),0 3px 8px -4px rgba(11,31,46,.25)}
+.nav .sl{background:var(--teal);border-radius:2px}
+.has-sl>button{position:relative;z-index:1;transition:color .35s}
+.seg.has-sl button[aria-pressed=true],.pill.has-sl button[aria-pressed=true]{background:transparent;box-shadow:none}
+.nav.has-sl a[aria-current=page]{box-shadow:none}
+.drawin{stroke-dasharray:1;stroke-dashoffset:1;animation:drawin 1s var(--ease) forwards}
+@keyframes drawin{to{stroke-dashoffset:0}}
+.fadein{animation:fadein 1s ease both}@keyframes fadein{from{opacity:0}}
+.cell.lv-over{animation:ob 2.4s ease-in-out infinite}
+@keyframes ob{50%{box-shadow:0 0 0 4px rgba(196,35,26,.13)}}
+.pr{fill:none;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:prs 2.2s var(--ease) infinite}
+@keyframes prs{from{opacity:.75;transform:scale(1)}to{opacity:0;transform:scale(2.3)}}
+.fishm{fill:#0E6E78;opacity:.55}
+@media(prefers-reduced-motion:reduce){.sl{transition:none}.fishm{display:none}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body class="is-demo">
+<div id="tide" aria-hidden="true"><canvas></canvas></div>
+<div class="top">
+ <header class="bar">
+  <a class="brand" href="index.html" aria-label="Jagakali, ke beranda"><img src="jagakali-logo-480.png" alt="Jagakali" width="113" height="32"></a>
+  <nav class="nav" id="nav" aria-label="Halaman"><a href="index.html">Beranda</a><a href="#dashboard">Dashboard</a><a href="#log">Log</a><a href="#riwayat">Riwayat</a><a href="#pengaturan">Pengaturan</a><a href="#tentang">Tentang</a></nav>
+  <div class="right"><span class="chip" id="chip"></span><div class="seg" id="modesw" role="group" aria-label="Sumber data"><button data-m="LIVE" aria-pressed="false">LIVE</button><button data-m="DEMO" aria-pressed="true">DEMO</button></div><span class="clock" id="clock"></span></div>
+ </header>
+ <div class="demo" id="demobar">
+  <span class="sim">DATA SIMULASI</span>
+  <div class="scen" id="scen" role="group" aria-label="Skenario"><button class="btn sm" data-s="normal">Normal</button><button class="btn sm" data-s="hujan">Hujan</button><button class="btn sm" data-s="buang">Pembuangan di hilir</button><button class="btn sm" data-s="rusak">Sensor rusak</button></div>
+  <div class="seg" id="speed" role="group" aria-label="Kecepatan putar"><button data-v="1">1×</button><button data-v="10" aria-pressed="true">10×</button><button data-v="60">60×</button></div>
+  <button class="btn sm pri push" id="vid">Putar dataset video</button>
+  <label class="btn sm file">Muat CSV tim<input type="file" id="csv" accept=".csv,text/csv"></label>
+ </div>
+ <div class="livebar" id="livebar"><span class="conn" id="conn"><i></i>MQTT terputus</span><span class="mute" id="connx"></span><button class="btn sm push" id="reconn">Hubungkan ulang</button></div>
+</div>
+
+<main>
+<section class="view on" id="v-dashboard">
+ <div class="wrap">
+  <div class="banner s-MENUNGGU" id="banner" role="status" aria-live="polite"></div>
+  <div class="dash">
+   <div class="panel">
+    <div class="ph"><h2>Sensor live per node</h2><span class="mute" id="mxnote"></span></div>
+    <div id="matrix"></div>
+   </div>
+   <div class="panel">
+    <div class="ph"><h2 id="cmpTitle">Hulu vs Hilir</h2><div class="legend"><span><i class="k hi"></i>HILIR</span><span><i class="k"></i><span id="lgHu">HULU</span></span></div></div>
+    <div class="ctl">
+     <div class="pill" id="ptabs"></div>
+     <div class="pill" id="rtabs"><button data-r="60">1 jam</button><button data-r="360">6 jam</button><button data-r="1440">24 jam</button><button data-r="10080">7 hari</button></div>
+     <label class="tog"><input type="checkbox" id="align" checked>Selaraskan waktu tempuh (τ)</label>
+    </div>
+    <div class="fig" id="cmpfig"><svg id="cmp" role="img" aria-label="Grafik perbandingan hulu dan hilir"></svg><div class="tip" id="tip"></div></div>
+   </div>
+  </div>
+  <div class="row2">
+   <div class="panel">
+    <div class="ph"><h2>Skor anomali AI</h2><span class="mute" id="scSrc"></span></div>
+    <div class="scw"><div class="fig s"><svg id="scr" role="img" aria-label="Grafik skor anomali 60 menit"></svg></div><div class="rd" id="scRd"></div></div>
+   </div>
+   <div class="panel"><div class="ph"><h2>Kesehatan perangkat</h2></div><div id="health"></div></div>
+   <div class="panel mapp map"><div class="ph"><h2>Lokasi node</h2><span class="mute">Skema, koordinat sementara</span></div><div id="map"></div><div class="minfo" id="minfo"></div></div>
+  </div>
+  <div class="panel">
+   <div class="ph"><h2>Log peringatan terbaru</h2><a href="#log">Lihat semua dan filter</a></div>
+   <div class="scroll"><table class="stack"><thead><tr><th>Waktu</th><th>Node</th><th>Status</th><th>Pola</th><th>Parameter</th><th>Nilai puncak</th><th>Tindak lanjut</th></tr></thead><tbody id="logMini"></tbody></table></div>
+  </div>
+ </div>
+</section>
+
+<section class="view" id="v-log">
+ <div class="wrap">
+  <div><h1>Log peringatan</h1><p class="lead">Semua kejadian WASPADA, BAHAYA, dan INFO. Tandai yang sudah ditinjau tim beserta catatan singkat.</p></div>
+  <div class="panel">
+   <div class="filters">
+    <div class="fld"><label for="fStatus">Status</label><select id="fStatus"><option value="">Semua status</option><option>BAHAYA</option><option>WASPADA</option><option value="INFO">INFO HUJAN</option></select></div>
+    <div class="fld"><label for="fDate">Tanggal</label><input type="date" id="fDate"></div>
+    <div class="fld"><label for="fRev">Tindak lanjut</label><select id="fRev"><option value="">Semua</option><option value="0">Belum ditinjau</option><option value="1">Sudah ditinjau</option></select></div>
+    <span class="mute" id="logCount"></span>
+   </div>
+   <div class="scroll"><table class="stack"><thead><tr><th>Waktu</th><th>Node</th><th>Status</th><th>Pola</th><th>Parameter</th><th>Nilai puncak</th><th>Tindak lanjut</th></tr></thead><tbody id="logFull"></tbody></table></div>
+  </div>
+ </div>
+</section>
+
+<section class="view" id="v-riwayat">
+ <div class="wrap">
+  <div><h1>Riwayat &amp; ekspor data</h1><p class="lead">Pilih rentang tanggal dan node, lalu unduh CSV dengan kolom yang sama seperti JSON data mentah.</p></div>
+  <div class="panel">
+   <div class="filters">
+    <div class="fld"><label for="rFrom">Dari</label><input type="date" id="rFrom"></div>
+    <div class="fld"><label for="rTo">Sampai</label><input type="date" id="rTo"></div>
+    <div class="fld"><label for="rNode">Node</label><select id="rNode"><option>HILIR</option><option>HULU</option><option value="SEMUA">Keduanya</option></select></div>
+    <button class="btn pri" id="dl">Unduh CSV</button><button class="btn" id="cp">Salin CSV</button>
+   </div>
+   <p class="mute" id="rCount"></p>
+   <div class="scroll"><table><thead><tr><th>Waktu (WIB)</th><th>Node</th><th>pH</th><th>Suhu °C</th><th>NTU</th><th>TDS ppm</th><th>Tinggi cm</th></tr></thead><tbody id="rBody"></tbody></table></div>
+  </div>
+ </div>
+</section>
+
+<section class="view" id="v-pengaturan">
+ <div class="wrap">
+  <div><h1>Pengaturan</h1><p class="lead">Perubahan langsung dipakai oleh banner, kartu, dan grafik, lalu disimpan di browser ini.</p></div>
+  <div class="panel"><div class="ph"><h2>Ambang dan logika status</h2></div><div class="form" id="cfgA"></div></div>
+  <div class="panel"><div class="ph"><h2>Koneksi MQTT</h2></div><div class="form" id="cfgB"></div></div>
+  <div class="panel">
+   <div class="ph"><h2>Notifikasi</h2></div>
+   <p style="margin:0 0 10px">Notifikasi muncul saat status naik menjadi WASPADA atau BAHAYA, dan tidak dikirim ulang untuk status yang sama selama 10 menit.</p>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn" id="notif">Aktifkan notifikasi browser</button><span class="mute" id="notifS"></span><button class="btn push" id="reset">Kembalikan default</button></div>
+   <p class="mute" style="margin:12px 0 0">Bot Telegram memerlukan token bot di server tim AI, jadi tidak dipasang di halaman publik ini.</p>
+  </div>
+ </div>
+</section>
+
+<section class="view" id="v-tentang">
+ <div class="wrap">
+  <div><h1>Tentang Jagakali</h1><p class="lead">Dua node sensor memantau Kali Surabaya. Jika hanya HILIR yang berubah, sumber dugaan ada di segmen di antara keduanya.</p></div>
+  <div class="panel">
+   <div class="ph"><h2>Alur data</h2></div>
+   <div class="flow" id="flow"></div>
+  </div>
+  <div class="cols">
+   <div class="panel">
+    <div class="ph"><h2>Lima sensor di setiap node</h2></div>
+    <div class="scroll"><table class="stack"><thead><tr><th>Sensor</th><th>Satuan</th><th>Yang dibaca</th><th>Acuan di dashboard</th></tr></thead><tbody id="sensT"></tbody></table></div>
+   </div>
+   <div class="panel">
+    <div class="ph"><h2>Arti status</h2></div>
+    <div class="scroll"><table class="stack"><thead><tr><th>Status</th><th>Kapan muncul</th></tr></thead><tbody id="statT"></tbody></table></div>
+   </div>
+  </div>
+  <div class="disc" role="note">
+   <h2>Disclaimer</h2>
+   <p>Status Jagakali adalah peringatan dini berbasis sensor murah. Sistem hanya menyatakan nilai melampaui ambang acuan, bukan melanggar baku mutu; penetapan pelanggaran adalah wewenang instansi setelah analisis laboratorium terakreditasi. Sistem tidak mengukur DO, amonia, COD, BOD, logam berat, deterjen, atau zat warna.</p>
+  </div>
+ </div>
+</section>
+</main>
+<footer><span>Jagakali · BINUS Robotics Cup 2026 (AIoT)</span><span>Semua waktu dalam WIB (UTC+7)</span><a href="#tentang">Disclaimer sistem</a></footer>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="tide.js"></script>
+<script>
+{
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MIN=60000, NODES=['HULU','HILIR'];
+const P=[
+ {k:'ph',n:'pH',l:'pH',s:'pH',u:'',d:1,dd:2,floor:.05,sig:[.5,1]},
+ {k:'temperature_c',n:'Suhu',l:'suhu',s:'Suhu',u:'°C',d:1,dd:2,floor:.1,sig:[1.5,3]},
+ {k:'turbidity_ntu',n:'Kekeruhan',l:'kekeruhan',s:'NTU',u:'NTU',d:0,dd:1,floor:2,sig:[40,100]},
+ {k:'tds_ppm_est',n:'TDS',l:'TDS',s:'TDS',u:'ppm',d:0,dd:0,floor:8,sig:[150,400]},
+ {k:'water_level_cm',n:'Tinggi air',l:'tinggi air',s:'Tinggi air',u:'cm',d:1,dd:1,floor:.4,sig:[5,15]}];
+const PK=Object.fromEntries(P.map(p=>[p.k,p]));
+const DEF={phMin:6,phMax:9,tds:1000,dTemp:3,tau:12,sd:3,offMul:3,theta:.55,interval:60};
+const cfg={...DEF};
+try{Object.assign(cfg,JSON.parse(localStorage.getItem('jagakali-cfg')||'{}'))}catch(e){}
+const saveCfg=()=>{try{localStorage.setItem('jagakali-cfg',JSON.stringify(cfg))}catch(e){}};
+
+/* format */
+const NF={};
+const fmt=(v,d=0)=>(v==null||!isFinite(v))?'–':(NF[d]||(NF[d]=new Intl.NumberFormat('id-ID',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false}))).format(v);
+const sgn=(v,d)=>!isFinite(v)?'–':(Math.abs(v)<.5*10**-d?'±':v>0?'+':'−')+fmt(Math.abs(v),d);
+const vtxt=(p,v)=>p.k==='tds_ppm_est'&&v>=1000?'≥ 1000':fmt(v,p.d);
+/* angka bergulir halus ke nilai baru, bukan melompat */
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches,TW=new Map();let twOn=false;
+function tween(el,to,f){const now=performance.now(),q=TW.get(el);let from=el._v;if(q){const k=Math.min(1,(now-q.t0)/560);from=q.a+(q.b-q.a)*(1-(1-k)**3)}
+ el._v=to;if(RM||!isFinite(to)||!isFinite(from)||from===to||document.hidden){TW.delete(el);el.textContent=isFinite(to)?f(to):'–';return}
+ TW.set(el,{a:from,b:to,f,t0:now});if(!twOn){twOn=true;requestAnimationFrame(twStep)}}
+function twStep(now){for(const [el,q] of TW){const k=Math.min(1,(now-q.t0)/560);el.textContent=q.f(q.a+(q.b-q.a)*(1-(1-k)**3));if(k>=1)TW.delete(el)}if(TW.size)requestAnimationFrame(twStep);else twOn=false}
+/* indikator geser: mengikuti tombol atau tautan yang aktif di setiap kelompok */
+function slider(box,sel){if(!box||box.classList.contains('has-sl'))return;const s=document.createElement('i');s.className='sl';s.setAttribute('aria-hidden','true');box.prepend(s);box.classList.add('has-sl');const nav=box.classList.contains('nav');let first=true;
+ const mv=()=>{const b=box.querySelector(sel);if(!b||!b.offsetWidth){s.style.opacity=0;return}
+  if(first){s.style.transition='none'}s.style.opacity=1;s.style.width=b.offsetWidth+'px';s.style.height=(nav?2:b.offsetHeight)+'px';s.style.transform=`translate(${b.offsetLeft}px,${b.offsetTop+(nav?b.offsetHeight-2:0)}px)`;
+  if(first){first=false;s.offsetWidth;s.style.transition=''}};
+ new MutationObserver(mv).observe(box,{subtree:true,attributes:true,attributeFilter:['aria-pressed','aria-current']});
+ if(window.ResizeObserver)new ResizeObserver(mv).observe(box);addEventListener('resize',mv);if(document.fonts)document.fonts.ready.then(mv);mv()}
+const pad=n=>String(n).padStart(2,'0');
+const wib=ms=>{const d=new Date(ms+7*3600e3);return {y:d.getUTCFullYear(),mo:d.getUTCMonth()+1,d:d.getUTCDate(),h:d.getUTCHours(),mi:d.getUTCMinutes(),s:d.getUTCSeconds()}};
+const hm=ms=>{const w=wib(ms);return pad(w.h)+':'+pad(w.mi)};
+const hms=ms=>hm(ms)+':'+pad(wib(ms).s);
+const dm=ms=>{const w=wib(ms);return pad(w.d)+'/'+pad(w.mo)};
+const ymd=ms=>{const w=wib(ms);return w.y+'-'+pad(w.mo)+'-'+pad(w.d)};
+const iso=ms=>ymd(ms)+'T'+hms(ms)+'+07:00';
+const cap=s=>s.startsWith('pH')||s.startsWith('TDS')?s:s[0].toUpperCase()+s.slice(1);
+const lst=a=>a.length<3?a.join(' dan '):a.slice(0,-1).join(', ')+', dan '+a[a.length-1];
+const LBL={AMAN:'AMAN',WASPADA:'WASPADA',BAHAYA:'BAHAYA',INFO:'INFO HUJAN',MENUNGGU:'MENUNGGU DATA'};
+const RANK={MENUNGGU:-1,AMAN:0,INFO:1,WASPADA:2,BAHAYA:3};
+const IC={AMAN:'<circle cx="12" cy="12" r="9.5"/><path d="M7.6 12.4l3 3 5.8-6.2"/>',
+ WASPADA:'<path d="M12 3.2 22.2 20.6H1.8z"/><path d="M12 9.6v5M12 17.6v.1"/>',
+ BAHAYA:'<path d="M8.1 2.6h7.8l5.5 5.5v7.8l-5.5 5.5H8.1l-5.5-5.5V8.1z"/><path d="M12 7.4v6.2M12 16.6v.1"/>',
+ INFO:'<path d="M12 3.2c3.6 4.6 6.2 8 6.2 11a6.2 6.2 0 0 1-12.4 0c0-3 2.6-6.4 6.2-11z"/><path d="M9.4 14.6a2.7 2.7 0 0 0 2.6 2.6"/>',
+ MENUNGGU:'<circle cx="12" cy="12" r="9.5" stroke-dasharray="3 3"/><path d="M12 7.5V12l3 2"/>',
+ TOOL:'<path d="M14.6 6.4a4 4 0 0 0-5.2 5.2L3.6 17.4l3 3 5.8-5.8a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.3-.7-.7-2.3z"/>'};
+const ico=(s,c='')=>`<svg viewBox="0 0 24 24" class="${c}" aria-hidden="true">${IC[s]||IC.MENUNGGU}</svg>`;
+const badge=s=>`<span class="badge s-${s}">${ico(s)}${LBL[s]||s}</span>`;
+
+/* store */
+const mk=()=>({data:{HULU:[],HILIR:[]},log:[],seq:0,an:null,anAt:0,score:[],ev:null,evLast:0,last:{status:'MENUNGGU',since:0},rssi:{HULU:null,HILIR:null},recv:{HULU:0,HILIR:0},cur:null,notif:{}});
+const ST={DEMO:mk(),LIVE:mk()};
+let mode='DEMO',S=ST.DEMO,view='dashboard',editing=null,mapSel=null;
+const sim={t:Date.now(),speed:10,fx:[],csv:null,csvI:0,csvInt:0,done:false,timer:0};
+const intervalMs=()=>mode==='DEMO'?(sim.csvInt||5000):cfg.interval*1000;
+const lb=(a,t)=>{let l=0,h=a.length;while(l<h){const m=(l+h)>>1;if(a[m].t<t)l=m+1;else h=m}return l};
+const at=(a,t)=>{const i=lb(a,t+1)-1;return i>=0?a[i]:null};
+const range=(a,t0,t1)=>a.slice(lb(a,t0),lb(a,t1+1));
+function push(st,node,r){const a=st.data[node];if(!a.length||a[a.length-1].t<r.t)a.push(r);else{const i=lb(a,r.t);if(a[i]&&a[i].t===r.t)a[i]=r;else a.splice(i,0,r)}if(a.length>70000)a.splice(0,a.length-70000)}
+
+/* simulator */
+let seed=11;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>{let u=0;for(let i=0;i<4;i++)u+=rnd();return (u-2)*1.73};
+/* dikalibrasi ke data terbitan Kali Surabaya (lihat docs/SUMBER_DATA.md) */
+const BASE={HULU:{ph:7.45,temperature_c:29.6,turbidity_ntu:22,tds_ppm_est:275,water_level_cm:85},HILIR:{ph:7.37,temperature_c:29.85,turbidity_ntu:25,tds_ppm_est:293,water_level_cm:83.8}};
+const NOISE={ph:.02,temperature_c:.04,turbidity_ntu:.8,tds_ppm_est:2,water_level_cm:.3};
+const DSCALE={ph:.1,temperature_c:.3,turbidity_ntu:15,tds_ppm_est:20,water_level_cm:2};
+const ramp=(x,dur)=>x<=0?0:x>=dur?1:(1-Math.cos(Math.PI*x/dur))/2;
+function gen(node,t,fx){
+ const w=wib(t),hr=w.h+w.mi/60,r={node_id:node,t};
+ for(const p of P)r[p.k]=BASE[node][p.k]+NOISE[p.k]*gauss();
+ const di=Math.sin((hr-9)/24*2*Math.PI);r.temperature_c+=.9*di;r.ph+=.12*di;
+ for(const f of fx){const x=t-f.t0;
+  if(f.type==='hujan'){let q=ramp(x-(node==='HILIR'?MIN:0),4*MIN);if(f.dec)q*=1-ramp(x-f.dec,90*MIN);r.turbidity_ntu+=240*q;r.water_level_cm+=24*q;r.tds_ppm_est-=33*q;r.temperature_c-=.6*q;r.ph-=.12*q}
+  if(f.type==='buang'&&node==='HILIR'){r.tds_ppm_est+=620*ramp(x,5*MIN);r.turbidity_ntu+=170*ramp(x-90e3,5*MIN);r.ph-=1.7*ramp(x-150e3,4*MIN);r.temperature_c+=.6*ramp(x,5*MIN)}
+  if(f.type==='rusak'&&node==='HILIR'&&x>=0)r.ph=f.v;
+ }
+ r.tds_ppm_est=Math.min(1000,Math.max(0,r.tds_ppm_est));r.turbidity_ntu=Math.max(0,r.turbidity_ntu);
+ for(const p of P)r[p.k]=+r[p.k].toFixed(p.dd);
+ return r;
+}
+function prefill(){
+ const st=ST.DEMO,T=sim.t;seed=11;st.data={HULU:[],HILIR:[]};
+ const w=wib(T);let r0=T-((w.h*60+w.mi)*MIN+w.s*1000)+(7*60+10)*MIN;if(r0>T-4*60*MIN)r0-=24*60*MIN;
+ const hf=[{type:'hujan',t0:r0-3*MIN,dec:40*MIN}];
+ for(let t=T-7*1440*MIN;t<T-32*MIN;t+=2*MIN)for(const n of NODES)st.data[n].push(gen(n,t,hf));
+ for(let t=T-32*MIN;t<=T;t+=5000)for(const n of NODES)st.data[n].push(gen(n,t,hf));
+ if(!st.seeded){st.seeded=true;
+  const pk={},win=range(st.data.HILIR,r0,r0+70*MIN);
+  for(const k of ['turbidity_ntu','water_level_cm'])pk[k]={v:Math.max(...win.map(r=>r[k])),z:0};
+  st.log=[{id:++st.seq,t:r0,fam:'I',node:'Keduanya',status:'INFO',pattern:'Hujan/limpasan',params:['turbidity_ntu','water_level_cm'],peak:pk,rev:true,note:'hujan deras'}];
+ }
+ st.score=[];for(let t=T-60*MIN;t<=T;t+=MIN)st.score.push({t,s:evaluate(st,t).s});
+ st.ev=null;st.last={status:'AMAN',since:T-60*MIN};st.cur=null;
+}
+
+/* logic */
+/* simpangan baku robust dari selisih berurutan: tidak membengkak saat jendela memuat lonjakan */
+function stats(a,t0,t1,k){const s=range(a,t0,t1).map(r=>r[k]).filter(isFinite);if(s.length<3)return null;const m=s.reduce((x,y)=>x+y,0)/s.length,d=[];for(let i=1;i<s.length;i++)d.push(Math.abs(s[i]-s[i-1]));d.sort((x,y)=>x-y);return {m,sd:d[d.length>>1]*1.4826/Math.SQRT2}}
+const zAt=(a,k,t,fl)=>{const r=at(a,t),s=stats(a,t-30*MIN,t-3*MIN,k);return r&&s&&isFinite(r[k])?(r[k]-s.m)/Math.max(s.sd,fl):0};
+function flatFor(a,k,t){let i=lb(a,t+1)-1;if(i<0)return 0;const v=a[i][k],t1=a[i].t;let t0=t1;while(i>0&&a[i-1][k]===v&&t1-a[i-1].t<6*60*MIN){i--;t0=a[i].t}return t1-t0}
+/* nilai terfilter: median 5 sampel terakhir, menahan lonjakan sesaat (gelembung, gangguan kabel) */
+function med5(a,t){const i=lb(a,t+1),s=a.slice(Math.max(0,i-5),i);if(!s.length)return null;const o={t:s[s.length-1].t};for(const p of P){const v=s.map(r=>r[p.k]).filter(isFinite).sort((x,y)=>x-y);o[p.k]=v.length?v[v.length>>1]:NaN}return o}
+/* puncak terisolasi: naik lalu langsung kembali; kenaikan bertahap tidak dihitung */
+function spikes(a,k,t,thr){const s=range(a,t-30*MIN,t);let n=0;for(let i=2;i<s.length;i++){const x=s[i-2][k],y=s[i-1][k],z=s[i][k];if((y-x>thr&&y-z>thr)||(x-y>thr&&z-y>thr))n++}return n}
+function health(st,node,t){
+ const a=st.data[node],r=at(a,t),o={node,r,f:null,online:false,flags:[],soft:[],bad:new Set()};
+ if(!r)return o;
+ o.f=med5(a,t);
+ o.online=st===ST.LIVE?Date.now()-st.recv[node]<=cfg.offMul*cfg.interval*1000:t-r.t<=cfg.offMul*intervalMs();
+ for(const p of P){const x=r[p.k];
+  if(!isFinite(x)){o.flags.push(`Sensor ${p.n}: data kosong atau tidak valid`);o.bad.add(p.k);continue}
+  if((p.k==='ph'&&(x<0||x>14))||(p.k==='temperature_c'&&x<=-100)||(['turbidity_ntu','tds_ppm_est','water_level_cm'].includes(p.k)&&x<0)){o.flags.push(`Sensor error: ${p.n} ${fmt(x,p.d)} di luar rentang fisik`);o.bad.add(p.k);continue}
+  const sp=spikes(a,p.k,t,10*DSCALE[p.k]);
+  if(sp>=3){o.flags.push(`Sensor ${p.n}: ${sp} lonjakan sesaat dalam 30 menit, cek gelembung udara atau kabel`);o.bad.add(p.k);continue}
+  if(p.k==='tds_ppm_est'&&x>=1000)continue;
+  const f=flatFor(a,p.k,t);
+  if(f>=15*MIN){o.flags.push(`Sensor ${p.n}: nilai datar ${Math.round(f/MIN)} menit, perlu dibersihkan/kalibrasi`);o.bad.add(p.k)}
+  else if(f>=5*MIN)o.soft.push(`Sensor ${p.n}: nilai belum berubah ${Math.round(f/MIN)} menit`);
+ }
+ return o;
+}
+/* Δ terhadap kebiasaannya: median Δ dua jam terakhir, dinormalkan dengan DSCALE */
+function dnOf(st,p,t,d){const v=[];for(let s=t-120*MIN;s<t-5*MIN;s+=2*MIN){const h=at(st.data.HILIR,s),u=at(st.data.HULU,s-cfg.tau*MIN);if(h&&u&&isFinite(h[p.k])&&isFinite(u[p.k])&&t-h.t<130*MIN)v.push(h[p.k]-u[p.k])}if(v.length<10)return 0;v.sort((x,y)=>x-y);return (d-v[v.length>>1])/DSCALE[p.k]}
+function evaluate(st,t){
+ const k=cfg.sd,H=health(st,'HULU',t),L=health(st,'HILIR',t);
+ const e={t,H,L,z:{},dn:{},dev:[],shared:[],A:[],N:0,s:0,theta:cfg.theta,tau:cfg.tau,status:'AMAN',delta:{},pattern:'',msg:'',src:'browser',node:'HILIR',params:[]};
+ if(!H.r||!L.r){e.status='MENUNGGU';e.msg='Belum ada data dari '+lst(NODES.filter(n=>!(n==='HULU'?H:L).r).map(n=>'node '+n))+'.';return e}
+ const hu=med5(st.data.HULU,t-cfg.tau*MIN)||H.f,hf=L.f,uf=H.f;
+ for(const p of P)e.delta[p.k]=hf[p.k]-hu[p.k];
+ let base=0,bn=0;const upIn=(p,sg)=>{if(H.bad.has(p.k)||!sg)return false;for(let dt=0;dt<=(cfg.tau+2)*MIN;dt+=MIN){const z=zAt(st.data.HULU,p.k,t-dt,p.floor);if(Math.abs(z)>k&&Math.sign(z)===sg)return true}return false};
+ for(const p of P){
+  const sh=stats(st.data.HILIR,t-30*MIN,t-3*MIN,p.k),su=stats(st.data.HULU,t-30*MIN,t-3*MIN,p.k);
+  const zh=sh&&isFinite(hf[p.k])?(hf[p.k]-sh.m)/Math.max(sh.sd,p.floor):0,zu=su&&isFinite(uf[p.k])?(uf[p.k]-su.m)/Math.max(su.sd,p.floor):0;
+  const dn=isFinite(e.delta[p.k])?dnOf(st,p,t,e.delta[p.k]):0;
+  e.z[p.k]={h:zh,u:zu,bh:sh?sh.m:null,bu:su?su.m:null};e.dn[p.k]=dn;
+  /* sensor bermasalah di salah satu node: selisih tidak bermakna, parameter ini dilewati */
+  if(L.bad.has(p.k)||H.bad.has(p.k))continue;
+  /* menyimpang = lonjakan khusus HILIR dan Δ tidak biasa, atau Δ sangat tidak biasa yang tidak datang dari hulu.
+     Syarat Δ mencegah alarm saat nilai kembali normal setelah kejadian. */
+  const big=Math.abs(zh)>k,upZ=big&&upIn(p,Math.sign(zh));
+  if(upZ)e.shared.push(p.k);
+  else if((big&&Math.abs(dn)>2)||(Math.abs(dn)>6&&!upIn(p,Math.sign(dn))))e.dev.push(p.k);
+  if(!upZ){base+=Math.min(Math.abs(zh),3)/3;bn++}
+ }
+ const rain=e.shared.includes('turbidity_ntu')&&e.shared.includes('water_level_cm')&&e.z.turbidity_ntu.h>0&&e.z.water_level_cm.h>0;
+ /* saat pola hujan aktif, kekeruhan/tinggi air HILIR yang naik dianggap bagian dari hujan */
+ if(rain&&e.dev.every(x=>x==='turbidity_ntu'||x==='water_level_cm'))e.dev=[];
+ e.N=e.dev.length;
+ const ex=e.dev.reduce((a,kk)=>a+Math.max(Math.abs(e.z[kk].h)-1.5,Math.abs(e.dn[kk])/2-1.5,0),0);
+ e.s=1-(1-.22*base/Math.max(bn,1))*Math.exp(-ex/8);
+ for(const [n,h] of [['HULU',H],['HILIR',L]])if(!h.bad.has('ph')&&(h.f.ph<cfg.phMin||h.f.ph>cfg.phMax))e.A.push({node:n,k:'ph',m:`pH ${n} ${fmt(h.f.ph,1)} di luar ${fmt(cfg.phMin,1)}–${fmt(cfg.phMax,1)}`});
+ if(!L.bad.has('tds_ppm_est')&&hf.tds_ppm_est>=cfg.tds)e.A.push({node:'HILIR',k:'tds_ppm_est',m:`TDS HILIR mencapai ${vtxt(PK.tds_ppm_est,hf.tds_ppm_est)} ppm`});
+ if(!L.bad.has('temperature_c')&&!H.bad.has('temperature_c')&&e.delta.temperature_c>cfg.dTemp&&e.delta.temperature_c<20)e.A.push({node:'HILIR',k:'temperature_c',m:`suhu HILIR ${sgn(e.delta.temperature_c,1)} °C dari HULU`});
+ const names=e.dev.map(x=>PK[x].l),insp=' Prioritas inspeksi: segmen antara Node HULU dan HILIR.';
+ if(e.A.length||e.N>=2){
+  e.status='BAHAYA';e.node=e.A.length&&!e.N&&e.A.every(a=>a.node==='HULU')?'HULU':'HILIR';
+  if(e.N>=2){e.pattern='Anomali multiparameter hilir';e.msg=`${cap(lst(names))} berubah bersamaan hanya di HILIR.`+(e.A.length?` Ambang acuan terlampaui: ${e.A.map(a=>a.m).join('; ')}.`:'')}
+  else{e.pattern='Ambang acuan terlampaui';e.msg=`${cap(e.A.map(a=>a.m).join('; '))}.`}
+  e.msg+=e.node==='HILIR'?insp:' Indikasi berasal dari hulu Node HULU.';
+ }else if(e.N===1||(e.s>e.theta&&!rain)){
+  e.status='WASPADA';
+  if(e.N===1){e.pattern='Perubahan tunggal di hilir';e.msg=`${cap(names[0])} HILIR menyimpang lebih dari ${fmt(k,0)} simpangan baku dari rata-rata 30 menit terakhirnya, sementara HULU stabil. Pantau perkembangan.`}
+  else{e.pattern='Skor anomali di atas ambang';e.msg='Kombinasi perubahan kecil di HILIR membuat skor anomali melewati ambang. Pantau perkembangan.'}
+ }else if(rain){e.status='INFO';e.node='Keduanya';e.pattern='Hujan/limpasan';e.msg='Kekeruhan dan tinggi air naik di kedua node. Pola ini mengarah ke hujan atau limpasan, bukan dugaan pembuangan.'}
+ else{e.msg='Tidak ada penyimpangan pada lima parameter. HULU dan HILIR bergerak seiring.'+(H.flags.length||L.flags.length?' Ada sensor yang perlu perawatan.':'')}
+ e.params=e.status==='INFO'?e.shared.slice():[...new Set([...e.dev,...e.A.map(a=>a.k)])];
+ return e;
+}
+const evalT=()=>{if(mode==='DEMO')return sim.t;const a=S.data.HULU,b=S.data.HILIR;return Math.max(a.length?a[a.length-1].t:0,b.length?b[b.length-1].t:0)||Date.now()};
+const patName=s=>{s=String(s).replace(/_/g,' ');return s.charAt(0).toUpperCase()+s.slice(1)};
+function current(){
+ const e=evaluate(S,evalT());
+ if(mode==='LIVE'&&S.an&&Date.now()-S.anAt<=cfg.offMul*cfg.interval*1000){
+  const a=S.an,st=String(a.status||'').toUpperCase();e.src='server';
+  if(st.startsWith('INFO'))e.status='INFO';else if(['AMAN','WASPADA','BAHAYA'].includes(st))e.status=st;
+  if(isFinite(+a.anomaly_score))e.s=+a.anomaly_score;if(a.threshold!=null&&isFinite(+a.threshold))e.theta=+a.threshold;
+  if(a.delta&&typeof a.delta==='object')for(const p of P){const v=+a.delta[p.k];if(a.delta[p.k]!=null&&isFinite(v))e.delta[p.k]=v}
+  if(a.tau_min!=null&&isFinite(+a.tau_min))e.tau=+a.tau_min;
+  if(a.N_t!=null&&isFinite(+a.N_t))e.N=+a.N_t;
+  if(a.pattern)e.pattern=patName(a.pattern);if(a.message)e.msg=String(a.message);
+  if(a.sensor_health&&typeof a.sensor_health==='object')for(const n of NODES){const v=a.sensor_health[n];if(v&&v!=='ok')(n==='HULU'?e.H:e.L).flags.push('Laporan server: '+String(v))}
+  if(e.status==='INFO')e.node='Keduanya';
+  if(!e.params.length)e.params=P.filter(p=>Math.abs(e.delta[p.k])>=p.sig[0]).map(p=>p.k);
+ }
+ return e;
+}
+function updateLog(e){
+ const st=S,t=e.t;
+ if(e.status==='AMAN'||e.status==='MENUNGGU'){if(st.ev&&t-st.evLast>2*MIN)st.ev=null}
+ else{
+  const fam=e.status==='INFO'?'I':'A';let ev=st.ev;
+  if(!ev||ev.fam!==fam){ev={id:++st.seq,t,fam,node:e.node,status:e.status,pattern:e.pattern,params:[],peak:{},rev:false,note:''};st.log.unshift(ev);st.ev=ev}
+  if(RANK[e.status]>RANK[ev.status]){ev.status=e.status;ev.pattern=e.pattern;ev.node=e.node}
+  for(const k of e.params)if(!ev.params.includes(k))ev.params.push(k);
+  const r=ev.node==='HULU'?e.H.r:e.L.r;
+  for(const k of ev.params){const z=Math.abs((ev.node==='HULU'?e.z[k]?.u:e.z[k]?.h)||0);if(!ev.peak[k]||z>=ev.peak[k].z)ev.peak[k]={v:r[k],z}}
+  st.evLast=t;
+ }
+ if(e.status!==st.last.status){const prev=st.last.status;st.last={status:e.status,since:t};if(RANK[e.status]>RANK[prev]&&RANK[e.status]>=2)notify(e)}
+}
+function notify(e){
+ if(!e.H.r||!e.L.r)return;
+ const now=e.t;if(S.notif[e.status]&&now-S.notif[e.status]<10*MIN)return;S.notif[e.status]=now;
+ const r=e.node==='HULU'?e.H.r:e.L.r;
+ const body=`${e.status} di ${e.node}, ${hm(e.t)} WIB. pH ${fmt(r.ph,1)} · TDS ${vtxt(PK.tds_ppm_est,r.tds_ppm_est)} ppm · NTU ${fmt(r.turbidity_ntu,0)}`;
+ toast(`<b>Jagakali: ${esc(body)}</b>`,e.status);
+ try{if('Notification' in window&&Notification.permission==='granted')new Notification('Jagakali',{body})}catch(x){}
+}
+function toast(html,s='MENUNGGU'){const d=document.createElement('div');d.className='toast';d.innerHTML=ico(s)+'<div>'+html+'</div>';$('#toasts').appendChild(d);setTimeout(()=>d.remove(),6500)}
+
+/* demo loop */
+const tickMs=()=>Math.max(250,5000/sim.speed);
+function step(){
+ if(sim.done)return;
+ const n=Math.max(1,Math.round(sim.speed*tickMs()/5000));
+ for(let i=0;i<n;i++){
+  sim.t+=5000;
+  if(sim.csv){while(sim.csvI<sim.csv.length&&sim.csv[sim.csvI].t<=sim.t)push(ST.DEMO,sim.csv[sim.csvI].node_id,sim.csv[sim.csvI++]);if(sim.csvI>=sim.csv.length){sim.done=true;toast('Dataset CSV selesai diputar. Klik Normal untuk kembali ke data sintetis.')}}
+  else for(const nd of NODES)push(ST.DEMO,nd,gen(nd,sim.t,sim.fx));
+  const e=current();updateLog(e);S.score.push({t:e.t,s:e.s});S.cur=e;
+  if(sim.done)break;
+ }
+ ST.DEMO.rssi={HULU:-56-Math.round(Math.random()*4),HILIR:-63-Math.round(Math.random()*5)};
+ if(S.score.length>3000)S.score.splice(0,S.score.length-3000);
+ schedule();
+}
+function loop(){clearTimeout(sim.timer);if(mode!=='DEMO')return;sim.timer=setTimeout(()=>{step();loop()},tickMs())}
+function scenario(s){
+ if(s==='normal'||sim.csv||sim.done){sim.csv=null;sim.csvInt=0;sim.done=false;sim.fx=[];prefill();S.cur=current()}
+ if(s!=='normal'&&!sim.fx.some(f=>f.type===s)){const f={type:s,t0:sim.t};if(s==='rusak'){const r=at(ST.DEMO.data.HILIR,sim.t);f.v=r?r.ph:7}sim.fx.push(f)}
+ scenBtns();schedule();loop();
+}
+const scenBtns=()=>$$('#scen button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s==='normal'?!sim.fx.length&&!sim.csv:sim.fx.some(f=>f.type===b.dataset.s))));
+function parseCSV(txt){
+ const L=txt.trim().split(/\r?\n/),hd=L.shift().split(',').map(s=>s.trim().replace(/^"|"$/g,'').toLowerCase()),rows=[];
+ for(const ln of L){const c=ln.split(','),o={};hd.forEach((h,i)=>o[h]=(c[i]||'').trim().replace(/^"|"$/g,''));const t=Date.parse(o.timestamp),nd=String(o.node_id||'').toUpperCase();if(isNaN(t)||!NODES.includes(nd))continue;const r={node_id:nd,t};for(const p of P){const v=parseFloat(o[p.k]);r[p.k]=isFinite(v)?v:NaN}rows.push(r)}
+ return rows.sort((a,b)=>a.t-b.t);
+}
+
+/* MQTT live */
+let client=null,conn='terputus';
+function setConn(s,x=''){conn=s;const c=$('#conn');c.classList.toggle('on',s==='terhubung');c.innerHTML='<i></i>MQTT '+esc(s);$('#connx').textContent=x||'Data langsung dari server'}
+function connect(){
+ if(client)client.close();
+ if(mode!=='LIVE')return;
+ setConn('menghubungkan');
+ client=new EventSource('/api/live');
+ client.addEventListener('ready',()=>setConn('terhubung'));
+ client.onmessage=event=>{const [topic,payload]=JSON.parse(event.data);onMsg(topic,payload)};
+ client.onerror=()=>setConn('terputus','Mencoba menghubungkan ulang…');
+}
+function onMsg(topic,txt){
+ let j;try{j=JSON.parse(txt)}catch(e){return}
+ if(!j||typeof j!=='object')return;
+ const st=ST.LIVE;
+ if(topic.endsWith('/analisis')){st.an=j;st.anAt=Date.now()}
+ else{const node=String(j.node_id||topic.split('/').pop()).toUpperCase();if(!NODES.includes(node))return;
+  const t=Date.parse(j.timestamp),r={node_id:node,t:isNaN(t)?Date.now():t};
+  for(const p of P){const v=Number(j[p.k]);r[p.k]=j[p.k]!=null&&isFinite(v)?v:NaN}
+  if(j.rssi!=null&&isFinite(+j.rssi))st.rssi[node]=+j.rssi;
+  st.recv[node]=Date.now();push(st,node,r)}
+ if(mode==='LIVE'){const e=current();updateLog(e);st.score.push({t:e.t,s:e.s});if(st.score.length>3000)st.score.shift();S.cur=e;schedule()}
+}
+
+/* render */
+let raf=0;const schedule=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;render()})};
+function render(){
+ const e=S.cur||(S.cur=current());
+ $('#clock').textContent=hms(mode==='DEMO'?sim.t:Date.now())+' WIB';
+ const c=$('#chip');c.className='chip s-'+e.status;c.innerHTML=ico(e.status)+LBL[e.status];
+ if(view==='dashboard'){banner(e);matrix(e);drawCmp();drawScore();scoreRd(e);healthP(e);mapP(e);logInto('#logMini',S.log.slice(0,5))}
+ else if(view==='log')logPage();
+}
+/* banner dibangun sekali; saat status berganti, warna baru menyebar dari ikon seperti air */
+const SCOL={AMAN:'#0F7A46',WASPADA:'#F2B705',BAHAYA:'#C4231A',INFO:'#2156D4',MENUNGGU:'#5D6B73'};
+let bPrev=null,bTimer=0;
+function banner(e){
+ const b=$('#banner'),since=S.last.status===e.status&&S.last.since?S.last.since:e.t;
+ if(!b.dataset.built){b.dataset.built='1';b.innerHTML='<span class="flood" id="flood"></span><span class="bico" id="bico"></span><div class="bl"><b id="blab"></b><span id="bsince"></span></div><div class="bm" id="bmsg"></div><div class="bx"><div><small>N<sub>t</sub></small><b id="bN"></b></div><div><small>A<sub>t</sub></small><b id="bA"></b></div><div><small id="bth"></small><b id="bS"></b></div><p id="bsrc"></p></div>'}
+ if(e.status!==bPrev){
+  const was=bPrev;bPrev=e.status;
+  $('#bico').innerHTML=ico(e.status,'bi');const lab=$('#blab');lab.textContent=LBL[e.status];lab.classList.remove('pop');void lab.offsetWidth;lab.classList.add('pop');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(was&&!reduce){const f=$('#flood'),ic=$('#bico').getBoundingClientRect(),br=b.getBoundingClientRect(),x=ic.left-br.left+ic.width/2,y=ic.top-br.top+ic.height/2;
+   clearTimeout(bTimer);b.style.background=SCOL[was];b.className='banner s-'+e.status;
+   f.style.transition='none';f.style.background=SCOL[e.status];f.style.clipPath=`circle(0px at ${x}px ${y}px)`;void f.offsetWidth;
+   f.style.transition='clip-path .95s cubic-bezier(.22,1,.36,1)';f.style.clipPath=`circle(${Math.hypot(br.width,br.height)}px at ${x}px ${y}px)`;
+   bTimer=setTimeout(()=>{b.style.background='';f.style.transition='none';f.style.clipPath='circle(0px at 0 0)'},980)}
+  else b.className='banner s-'+e.status;
+ }
+ $('#bsince').textContent=e.status==='MENUNGGU'?'belum ada data':'sejak '+hm(since)+' WIB';
+ if($('#bmsg').textContent!==e.msg)$('#bmsg').textContent=e.msg;
+ $('#bN').textContent=fmt(e.N,0);$('#bA').textContent=e.A.length||e.Aflag?1:0;$('#bth').textContent='Skor / θ '+fmt(e.theta,2);$('#bS').textContent=fmt(e.s,2);
+ $('#bsrc').textContent=(e.src==='server'?'Sumber: server analisis':'Sumber: aturan cadangan di browser')+(mode==='DEMO'?' · data simulasi':'');
+}
+function level(node,p,e){
+ const h=node==='HULU'?e.H:e.L,x=h.r[p.k];
+ if(h.bad.has(p.k))return ['maint','perawatan'];
+ if(!isFinite(x))return ['maint','tidak valid'];
+ if(p.k==='ph'){if(x<cfg.phMin||x>cfg.phMax)return ['over','lewat ambang'];if(x<cfg.phMin+.3||x>cfg.phMax-.3)return ['near','dekat ambang']}
+ if(p.k==='tds_ppm_est'){if(x>=cfg.tds)return ['over',x>=1000?'batas sensor':'lewat ambang'];if(x>=.8*cfg.tds)return ['near','dekat ambang']}
+ if(p.k==='temperature_c'&&node==='HILIR'){const d=e.delta.temperature_c;if(d>cfg.dTemp)return ['over','Δ lewat ambang'];if(d>=.8*cfg.dTemp)return ['near','Δ dekat ambang']}
+ if(p.k==='turbidity_ntu'||p.k==='water_level_cm'){const z=(node==='HULU'?e.z[p.k]?.u:e.z[p.k]?.h)||0;if(z>cfg.sd&&(e.status==='INFO'||e.shared.includes(p.k)))return ['info','naik di kedua node'];if(z>cfg.sd)return ['over','lewat baseline'];if(z>cfg.sd*.66)return ['near','mulai naik']}
+ return ['ok',''];
+}
+function spark(a,k,T,fl){
+ const s=range(a,T-30*MIN,T);if(s.length<2)return '';
+ const b=bucket(s,T-30*MIN,30*MIN,48,k);if(b.length<2)return '';
+ let mn=Math.min(...b.map(q=>q.v)),mx=Math.max(...b.map(q=>q.v));
+ if(mx-mn<fl*10){const c=(mx+mn)/2;mn=c-fl*5;mx=c+fl*5}
+ return b.map(q=>((q.t-(T-30*MIN))/(30*MIN)*100).toFixed(1)+','+(26-(q.v-mn)/(mx-mn)*24).toFixed(1)).join(' ');
+}
+function bucket(s,t0,R,n,k){const out=[],w=R/n;let i=0;for(let j=0;j<n;j++){const end=t0+(j+1)*w;let sum=0,c=0;while(i<s.length&&s[i].t<end){const v=s[i][k];if(isFinite(v)){sum+=v;c++}i++}if(c)out.push({t:t0+(j+.5)*w,v:sum/c})}return out}
+/* kartu dibangun sekali, lalu hanya isinya yang diperbarui, supaya transisi warna tepi berjalan halus */
+const shell=(node,p)=>`<div class="cell${node==='HILIR'?' hi':''}" id="c-${node}-${p.k}"><i class="nd">${node}</i><div class="cv"><b>–</b><span>${p.u}</span></div><svg class="sp" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><polyline points=""/></svg><div class="cm"><time>belum ada data</time><span class="tg"></span></div></div>`;
+let mxBuilt=false;
+function updCell(node,p,e){
+ const el=$(`#c-${node}-${p.k}`),h=node==='HULU'?e.H:e.L,r=h.r;if(!el)return;
+ if(!r){el.className='cell'+(node==='HILIR'?' hi':'');const vb=el.querySelector('b');vb._v=NaN;TW.delete(vb);vb.textContent='–';el.querySelector('time').textContent='belum ada data';el.querySelector('.tg').innerHTML='';el.querySelector('polyline').setAttribute('points','');return}
+ const [lv,tag]=level(node,p,e),x=r[p.k];let t2=tag;
+ if(!t2&&p.k==='turbidity_ntu'){const b=node==='HULU'?e.z[p.k]?.bu:e.z[p.k]?.bh;if(b)t2=`×${fmt(x/b,1)} baseline`}
+ const ic=lv==='over'?ico('BAHAYA'):lv==='near'?ico('WASPADA'):lv==='maint'?ico('TOOL'):lv==='info'?ico('INFO'):'';
+ el.className=`cell lv-${lv}${node==='HILIR'?' hi':''}`;
+ tween(el.querySelector('b'),x,v=>vtxt(p,v));
+ el.querySelector('time').textContent=hms(r.t);
+ el.querySelector('.tg').innerHTML=t2?ic+esc(t2):'';
+ el.querySelector('polyline').setAttribute('points',spark(S.data[node],p.k,e.t,p.floor));
+}
+function updD(p,e){
+ const el=$('#d-'+p.k),d=e.delta[p.k];if(!el)return;
+ if(d==null||!isFinite(d)){el.className='dl';el.textContent='–';return}
+ const a=Math.abs(d),sev=a>=p.sig[1]?'d-bad':a>=p.sig[0]?'d-warn':'',ar=a<p.sig[0]/4?'→':d>0?'↑':'↓';
+ el.className='dl '+sev;el.innerHTML=`<span class="ar" aria-hidden="true">${ar}</span>${sgn(d,p.d)}<small>${p.u||'Δ'}</small>`;
+}
+function matrix(e){
+ $('#mxnote').textContent=`Δ = HILIR − HULU, τ = ${fmt(e.tau,0)} menit`;
+ if(!mxBuilt){mxBuilt=true;$('#matrix').innerHTML='<div class="mxh"><span>Parameter</span><span>HULU</span><span>Δ</span><span>HILIR</span></div>'+P.map(p=>`<div class="mrow"><div class="pn"><b>${p.n}</b><small>${p.u||'tanpa satuan'}</small></div>${shell('HULU',p)}<div class="dl num" id="d-${p.k}" title="Δ${p.n} = HILIR(t) − HULU(t − τ)">–</div>${shell('HILIR',p)}</div>`).join('')}
+ for(const p of P){updCell('HULU',p,e);updD(p,e);updCell('HILIR',p,e)}
+}
+const ch={k:'tds_ppm_est',range:60,align:true};let cmpC=null,tipEv=null;
+function nice(mn,mx,n){const st0=(mx-mn||1)/n,m=10**Math.floor(Math.log10(st0)),st=[1,2,2.5,5,10].map(x=>x*m).find(x=>x>=st0-1e-12);const a=Math.floor(mn/st+1e-9)*st,b=Math.ceil(mx/st-1e-9)*st,t=[];for(let v=a;v<=b+st*.01;v+=st)t.push(+v.toFixed(6));return {a,b:b>a?b:a+st,t,st}}
+function drawCmp(){
+ const s=$('#cmp');if(!s||!s.clientWidth)return;
+ const e=S.cur,W=s.clientWidth,H=s.clientHeight,p=PK[ch.k],T=e.t,R=ch.range*MIN,sh=ch.align?cfg.tau*MIN:0,sm=W<520;
+ const M={l:sm?38:50,r:sm?44:92,t:12,b:26},iw=W-M.l-M.r,ih=H-M.t-M.b,n=Math.max(30,Math.min(360,Math.floor(iw/2.5))),ser={};
+ for(const nd of NODES){const off=nd==='HULU'?sh:0,src=range(S.data[nd],T-R-off,T-off),b=bucket(src,T-R-off,R,n,p.k).map(q=>({t:q.t+off,v:q.v})),last=src[src.length-1];if(last&&isFinite(last[p.k]))b.push({t:last.t+off,v:last[p.k]});ser[nd]=b}
+ const hiL=ser.HILIR[ser.HILIR.length-1],huL=ser.HULU[ser.HULU.length-1];
+ $('#cmpTitle').textContent=hiL&&huL?`${p.n}: HILIR ${vtxt(p,hiL.v)} ${p.u}, HULU ${vtxt(p,huL.v)} ${p.u}`.replace(/\s+,/,',').trim():`${p.n}: Hulu vs Hilir`;
+ $('#lgHu').textContent=ch.align?`HULU, digeser τ ${fmt(cfg.tau,0)} menit`:'HULU';
+ const all=[...ser.HULU,...ser.HILIR].map(q=>q.v);
+ if(!all.length){s.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle">Belum ada data pada rentang ini</text>`;cmpC=null;return}
+ let mn=Math.min(...all),mx=Math.max(...all);const th=[];
+ if(p.k==='ph')th.push(cfg.phMin,cfg.phMax);
+ if(p.k==='tds_ppm_est'){th.push(cfg.tds);mn=0}
+ if(p.k==='turbidity_ntu')mn=0;
+ for(const v of th){mn=Math.min(mn,v-(p.k==='ph'?.4:0));mx=Math.max(mx,v+(p.k==='ph'?.4:0))}
+ if(mx-mn<p.floor*10){const c=(mx+mn)/2;mn=c-p.floor*5;mx=c+p.floor*5}
+ const Y=nice(mn,mx,sm?3:4),x=t=>M.l+(t-(T-R))/R*iw,y=v=>M.t+ih-(v-Y.a)/(Y.b-Y.a)*ih;
+ let g='';
+ for(const v of Y.t){const yy=y(v).toFixed(1);g+=`<line class="gl" x1="${M.l}" x2="${M.l+iw}" y1="${yy}" y2="${yy}"/><text x="${M.l-8}" y="${+yy+4}" text-anchor="end">${fmt(v,Y.st<1?1:0)}</text>`}
+ const nt=sm?3:5;for(let i=0;i<=nt;i++){const t=T-R+R*i/nt,xx=x(t);g+=`<text x="${xx.toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===nt?'end':'middle'}">${ch.range>1440?dm(t):hm(t)}</text>`}
+ for(const v of th){const yy=y(v).toFixed(1);g+=`<line class="thl" x1="${M.l}" x2="${M.l+iw}" y1="${yy}" y2="${yy}"/><text class="tht" x="${M.l+6}" y="${+yy-6}">ambang ${fmt(v,p.k==='ph'?1:0)}</text>`}
+ const path=a=>a.map((q,i)=>(i?'L':'M')+x(q.t).toFixed(1)+' '+y(q.v).toFixed(1)).join('');
+ const hp=path(ser.HILIR);
+ if(ser.HILIR.length>1)g+=`<path class="ahi" d="${hp}L${x(hiL.t).toFixed(1)} ${M.t+ih}L${x(ser.HILIR[0].t).toFixed(1)} ${M.t+ih}Z"/>`;
+ const ae=performance.now()-(ch.a0||-9e9),an=ae<1000&&!RM,dl=an?` style="animation-delay:-${(ae/1000).toFixed(3)}s"`:'';
+ if(an)g=g.replace('<path class="ahi"','<path class="ahi fadein"'+dl);
+ g+=`<path class="lhu${an?' fadein':''}"${dl} d="${path(ser.HULU)}"/><path class="lhi${an?' drawin':''}"${an?' pathLength="1"':''}${dl} d="${hp}"/>`;
+ let yh=hiL?y(hiL.v):0,yu=huL?y(huL.v):0;
+ if(hiL&&huL&&Math.abs(yh-yu)<18){const m=(yh+yu)/2,d=yh<=yu?-9:9;yh=m+d;yu=m-d}
+ const lx=M.l+iw+8;
+ if(hiL)g+=`<text class="ldh" x="${lx}" y="${(yh+4).toFixed(1)}">${sm?'':'HILIR '}${vtxt(p,hiL.v)}</text>`;
+ if(huL)g+=`<text class="ldu" x="${lx}" y="${(yu+4).toFixed(1)}">${sm?'':'HULU '}${vtxt(p,huL.v)}</text>`;
+ g+=`<line class="guide" id="guide" x1="0" x2="0" y1="${M.t}" y2="${M.t+ih}"/><rect id="hit" x="${M.l}" y="${M.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+ s.innerHTML=g;cmpC={ser,x,M,iw,T,R,sh,p};
+ if(tipEv)onTip(tipEv);
+}
+function onTip(ev){
+ if(!cmpC)return;const box=$('#cmp').getBoundingClientRect(),px=ev.clientX-box.left,{M,iw,T,R,p,sh}=cmpC;
+ if(px<M.l||px>M.l+iw){hideTip();return}
+ const t=T-R+(px-M.l)/iw*R,near=a=>{let b=null,bd=Infinity;for(const q of a){const d=Math.abs(q.t-t);if(d<bd){bd=d;b=q}}return b};
+ const h=near(cmpC.ser.HILIR),u=near(cmpC.ser.HULU),gx=cmpC.x(h?h.t:t),gl=$('#guide');
+ if(gl){gl.setAttribute('x1',gx);gl.setAttribute('x2',gx);gl.style.opacity=.5}
+ const tip=$('#tip');
+ tip.innerHTML=`<b>${ch.range>1440?dm(t)+' ':''}${hm(h?h.t:t)} WIB</b><span><i class="k hi"></i>HILIR ${h?vtxt(p,h.v):'–'} ${p.u}</span><span><i class="k"></i>HULU ${u?vtxt(p,u.v):'–'} ${p.u}${sh&&u?` <small>(data ${hm(u.t-sh)})</small>`:''}</span>`;
+ tip.style.opacity=1;const tw=tip.offsetWidth;tip.style.left=(gx+12+tw>box.width?gx-12-tw:gx+12)+'px';tip.style.top=(M.t+4)+'px';
+}
+function hideTip(){tipEv=null;$('#tip').style.opacity=0;const gl=$('#guide');if(gl)gl.style.opacity=0}
+function drawScore(){
+ const s=$('#scr');if(!s||!s.clientWidth)return;
+ const e=S.cur,W=s.clientWidth,H=s.clientHeight,T=e.t,R=60*MIN,M={l:30,r:6,t:8,b:24},iw=W-M.l-M.r,ih=H-M.t-M.b;
+ const x=t=>M.l+(t-(T-R))/R*iw,y=v=>M.t+ih-Math.max(0,Math.min(1,v))*ih;
+ let pts=S.score.filter(q=>q.t>=T-R&&q.t<=T);const stp=Math.ceil(pts.length/Math.max(40,iw/2));if(stp>1)pts=pts.filter((q,i)=>i%stp===0||i===pts.length-1);
+ let g='';for(const v of [0,.5,1]){const yy=y(v).toFixed(1);g+=`<line class="gl" x1="${M.l}" x2="${M.l+iw}" y1="${yy}" y2="${yy}"/><text x="${M.l-6}" y="${+yy+4}" text-anchor="end">${fmt(v,1)}</text>`}
+ [0,.5,1].forEach((f,i)=>{const t=T-R+R*f;g+=`<text x="${x(t).toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===2?'end':'middle'}">${hm(t)}</text>`});
+ const th=y(e.theta).toFixed(1);g+=`<line class="thl" x1="${M.l}" x2="${M.l+iw}" y1="${th}" y2="${th}"/><text class="tht" x="${M.l+6}" y="${+th-6}">θ ${fmt(e.theta,2)}</text>`;
+ if(pts.length>1){const d=pts.map((q,i)=>(i?'L':'M')+x(q.t).toFixed(1)+' '+y(q.s).toFixed(1)).join('');g+=`<path class="ahi" d="${d}L${x(pts[pts.length-1].t).toFixed(1)} ${M.t+ih}L${x(pts[0].t).toFixed(1)} ${M.t+ih}Z"/><path class="lhi" d="${d}"/>`}
+ s.innerHTML=g;
+}
+function scoreRd(e){
+ $('#scSrc').textContent=e.src==='server'?'Isolation Forest, dari server':mode==='DEMO'?'estimasi browser, data simulasi':'estimasi browser, server belum masuk';
+ const box=$('#scRd');if(!box.dataset.b){box.dataset.b='1';box.innerHTML='<div><div class="big" id="scBig">–</div><div class="mute" id="scTh"></div></div><div><div class="mute">Pola dikenali</div><b id="scPat"></b></div>'}
+ const big=$('#scBig');big.classList.toggle('hot',e.s>e.theta);tween(big,e.s,v=>fmt(v,2));
+ $('#scTh').textContent=`ambang θ ${fmt(e.theta,2)}`;const pt=e.pattern||'Tidak ada pola anomali';if($('#scPat').textContent!==pt)$('#scPat').textContent=pt;
+}
+function healthP(e){
+ $('#health').innerHTML=[e.H,e.L].map(h=>{
+  const rs=S.rssi[h.node];
+  const fl=h.flags.map(f=>`<div class="flag">${ico('TOOL')}<span>${esc(f)}</span></div>`).join('')+h.soft.map(f=>`<div class="flag soft">${ico('MENUNGGU')}<span>${esc(f)}</span></div>`).join('');
+  return `<div class="hn"><div class="t"><span>${h.node}</span><span><i class="dot${h.online?'':' off'}"></i>${h.r?h.online?'Online':'OFFLINE':'Belum ada data'}</span></div><div class="mute">Data terakhir ${h.r?hms(h.r.t):'–'} · sinyal ${rs!=null?fmt(rs,0)+' dBm':'tidak dilaporkan'}</div>${fl||'<div class="mute">Kelima sensor normal</div>'}</div>`}).join('');
+}
+function mapP(e){
+ const col={ok:'var(--ok)',warn:'#e0a400',bad:'var(--bad)',info:'var(--info)',off:'var(--gray)'};
+ let cu=col.ok,ci=col.ok,cs='',lab='';
+ if(e.status==='INFO')cu=ci=col.info;
+ if(e.status==='WASPADA'||e.status==='BAHAYA'){const c=e.status==='BAHAYA'?col.bad:col.warn;if(e.node==='HULU')cu=c;else{ci=c;cs=c;lab=e.status==='BAHAYA'?'Segmen prioritas inspeksi':'Segmen dipantau'}}
+ if(!e.H.online)cu=col.off;if(!e.L.online)ci=col.off;
+ const seg='M110 96 C160 76 222 152 290 130';
+ $('#map').innerHTML=`<svg viewBox="0 0 400 200" role="img" aria-label="Skema segmen sungai antara node HULU dan HILIR">
+<path class="riv" d="M-10 178 C30 168 70 112 110 96"/><path class="riv" d="${seg}" ${cs?`style="stroke:${cs};opacity:.85"`:''}/><path class="riv" d="M290 130 C330 118 368 72 410 60"/>
+<path class="rivc" d="M-10 178 C30 168 70 112 110 96 C160 76 222 152 290 130 C330 118 368 72 410 60"/>
+${lab?`<text x="186" y="156" text-anchor="middle" style="fill:${cs};font-weight:700">${lab}</text>`:''}
+<text x="392" y="190" text-anchor="end">arah aliran →</text>
+${RM?'':[0,3.4,6.1].map((o,i)=>`<path class="fishm" d="M6 0Q1-3.4-4 0L-7.5-3.2-6.6 0-7.5 3.2-4 0Q1 3.4 6 0Z" transform="scale(${[1,.8,1.15][i]})"><animateMotion dur="11s" repeatCount="indefinite" rotate="auto" begin="-${((performance.now()/1000+o)%11).toFixed(2)}s" path="M-10 ${178+i*3} C30 ${168+i*3} 70 ${112+i*3} 110 ${96+i*3} C160 ${76+i*3} 222 ${152+i*3} 290 ${130+i*3} C330 ${118+i*3} 368 ${72+i*3} 410 ${60+i*3}"/></path>`).join('')}
+${RM?'':`<circle class="pr" cx="110" cy="96" r="12" style="stroke:${cu};animation-delay:-${((performance.now()/1000)%2.2).toFixed(2)}s"/><circle class="pr" cx="290" cy="130" r="12" style="stroke:${ci};animation-delay:-${((performance.now()/1000+1.1)%2.2).toFixed(2)}s"/>`}
+<g class="mk" data-n="HULU" tabindex="0" role="button" aria-label="Ringkasan node HULU"><circle cx="110" cy="96" r="12" style="fill:${cu}"/><text x="110" y="68" text-anchor="middle">HULU</text></g>
+<g class="mk" data-n="HILIR" tabindex="0" role="button" aria-label="Ringkasan node HILIR"><circle cx="290" cy="130" r="12" style="fill:${ci}"/><text x="290" y="164" text-anchor="middle">HILIR</text></g></svg>`;
+ const h=mapSel==='HULU'?e.H:mapSel==='HILIR'?e.L:null;
+ $('#minfo').innerHTML=h&&h.r?`<b>${h.node}</b> · ${h.online?'online':'offline'} · ${hms(h.r.t)} WIB<br>pH ${fmt(h.r.ph,1)} · ${fmt(h.r.temperature_c,1)} °C · ${fmt(h.r.turbidity_ntu,0)} NTU · ${vtxt(PK.tds_ppm_est,h.r.tds_ppm_est)} ppm · ${fmt(h.r.water_level_cm,1)} cm`:'<span class="mute">Klik penanda untuk ringkasan node. Peta Leaflet dipasang setelah koordinat final dikirim tim.</span>';
+}
+function logRow(l){
+ const pk=l.params.map(k=>`${PK[k].s} ${l.peak[k]?vtxt(PK[k],l.peak[k].v):'–'}`).join(' · ')||'–';
+ const tl=l.rev?`<span class="okt">Ditinjau${l.note?`: “${esc(l.note)}”`:''}</span>`:editing===l.id?`<form class="rv" data-id="${l.id}"><input type="text" id="note-${l.id}" placeholder="Catatan singkat" maxlength="80" aria-label="Catatan tindak lanjut"><button class="btn sm pri">Simpan</button></form>`:`<button class="btn sm" data-rev="${l.id}">Tandai sudah ditinjau</button>`;
+ return `<tr><td class="nw">${dm(l.t)} ${hm(l.t)}</td><td>${esc(l.node)}</td><td>${badge(l.status)}</td><td>${esc(l.pattern)}</td><td>${l.params.map(k=>PK[k].s).join(', ')||'–'}</td><td>${pk}</td><td>${tl}</td></tr>`;
+}
+const sigs={};
+function logInto(sel,list,empty='Belum ada kejadian.'){
+ const sig=mode+'|'+editing+'|'+list.map(l=>l.id+l.status+l.rev+l.params.length+Object.values(l.peak).map(q=>q.v).join()).join(',');
+ if(sigs[sel]===sig)return;if(editing!=null&&sigs[sel]&&document.activeElement&&document.activeElement.closest(sel))return;
+ sigs[sel]=sig;$(sel).innerHTML=list.length?list.map(logRow).join(''):`<tr><td colspan="7" class="mute">${empty}</td></tr>`;
+}
+function logPage(){
+ const fs=$('#fStatus').value,fd=$('#fDate').value,fr=$('#fRev').value;
+ const list=S.log.filter(l=>(!fs||l.status===fs)&&(!fd||ymd(l.t)===fd)&&(!fr||String(+l.rev)===fr));
+ $('#logCount').textContent=`${list.length} dari ${S.log.length} kejadian · ${S.log.filter(l=>!l.rev).length} belum ditinjau`;
+ logInto('#logFull',list,'Tidak ada kejadian untuk filter ini.');
+}
+function histRows(){
+ const f=$('#rFrom').value,to=$('#rTo').value,nd=$('#rNode').value,t0=f?Date.parse(f+'T00:00:00+07:00'):0,t1=to?Date.parse(to+'T23:59:59+07:00'):Infinity,out=[];
+ for(const n of nd==='SEMUA'?NODES:[nd])for(const r of range(S.data[n],t0,t1))out.push(r);
+ return out.sort((a,b)=>a.t-b.t);
+}
+const csvOf=rows=>['node_id,timestamp,'+P.map(p=>p.k).join(',')].concat(rows.map(r=>[r.node_id,iso(r.t),...P.map(p=>isFinite(r[p.k])?r[p.k]:'')].join(','))).join('\n');
+function renderRiwayat(){
+ if(!$('#rFrom').value){const d=ymd(evalT());$('#rFrom').value=d;$('#rTo').value=d}
+ const rows=histRows(),show=rows.slice(-200).reverse();
+ $('#rCount').textContent=rows.length?`${rows.length} baris ditemukan. Tabel menampilkan ${show.length} baris terbaru; CSV memuat semuanya.`:'Tidak ada data pada rentang ini.';
+ $('#rBody').innerHTML=show.map(r=>`<tr><td class="nw">${dm(r.t)} ${hms(r.t)}</td><td>${r.node_id}</td>${P.map(p=>`<td class="n">${vtxt(p,r[p.k])}</td>`).join('')}</tr>`).join('');
+}
+
+/* settings */
+const CF=[['cfgA','phMin','Ambang pH bawah','Default 6',.1],['cfgA','phMax','Ambang pH atas','Default 9',.1],['cfgA','tds','Ambang TDS hilir (ppm)','Default 1000, batas atas sensor',10],['cfgA','dTemp','Ambang Δsuhu hilir − hulu (°C)','Default 3',.1],['cfgA','tau','τ waktu tempuh (menit)','Default 12, masih placeholder',1],['cfgA','sd','Batas simpangan (SD)','Default 3; dibanding rata-rata 30 menit',.5],['cfgA','offMul','Interval offline (× interval kirim)','Default 3',1],['cfgA','theta','Ambang skor θ cadangan','Dipakai jika field threshold tidak ada. Default 0,55',.01],
+ ['cfgB','interval','Interval kirim perangkat (detik)','Perangkat asli 60. Mode DEMO selalu 5',1]];
+function buildCfg(){for(const [box,k,l,h,st] of CF)$('#'+box).insertAdjacentHTML('beforeend',`<div class="fld"><label for="c-${k}">${l}</label><input id="c-${k}" data-k="${k}" type="${st?'number':'text'}" ${st?`step="${st}"`:''} inputmode="${st?'decimal':'url'}"><small>${h}</small></div>`)}
+function fillCfg(){for(const c of CF)$('#c-'+c[1]).value=cfg[c[1]]}
+
+/* static content */
+const FLOW=[['Sensor','Lima sensor di tiap node: pH, suhu, kekeruhan, TDS, tinggi muka air.','<path d="M10 3h4v10a4 4 0 1 1-4 0z"/><path d="M10 9h4"/>'],['ESP32','Membaca sensor, mengirim JSON tiap 60 detik (5 detik saat simulasi).','<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/>'],['MQTT','Broker menyalurkan topik <code>jagakali/node/HULU</code> dan <code>…/HILIR</code>.','<circle cx="12" cy="12" r="2.5"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8M8.5 8.5a4.5 4.5 0 0 0 0 7M15.5 8.5a4.5 4.5 0 0 1 0 7"/>'],['Analisis AI','Server Python menghitung skor Isolation Forest dan selisih, lalu kirim ke <code>jagakali/analisis</code>.','<path d="M4 18l5-6 4 3 7-9"/><circle cx="20" cy="6" r="1.5"/>'],['Dashboard','Server meneruskan data MQTT ke dashboard. Jika analisis tidak masuk, aturan cadangan di browser mengambil alih.','<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 13l3-3 2 2 4-4"/>']];
+$('#flow').innerHTML=FLOW.map((f,i)=>(i?'<div class="arw" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>':'')+`<div class="st"><svg viewBox="0 0 24 24" aria-hidden="true">${f[2]}</svg><h3>${f[0]}</h3><p>${f[1]}</p></div>`).join('');
+$('#sensT').innerHTML=[['pH','–','Tingkat keasaman air (0–14). Limbah asam atau basa menggeser pH.','6–9, kelas II PP 22/2021'],['Suhu','°C','Suhu air. Buangan panas menaikkan suhu hilir dibanding hulu.','Δsuhu hilir − hulu maks. 3 °C'],['Kekeruhan','NTU','Partikel melayang di air. Naik saat hujan maupun saat ada buangan.','Tanpa ambang resmi; dibaca relatif terhadap baseline, tidak dikonversi ke TSS'],['TDS','ppm','Estimasi zat terlarut dari daya hantar listrik. Sensor jenuh di 1000 ppm.','1000 ppm di hilir'],['Tinggi muka air','cm','Ketinggian permukaan sungai. Membedakan hujan atau limpasan dari buangan.','Relatif terhadap baseline']].map(r=>`<tr><td><b>${r[0]}</b></td><td class="nw">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+$('#statT').innerHTML=[['AMAN','Tidak ada penyimpangan.'],['WASPADA','Skor anomali s<sub>t</sub> &gt; θ, atau tepat satu parameter hilir menyimpang (N<sub>t</sub> = 1).'],['BAHAYA','Ambang acuan terlampaui (A<sub>t</sub> = 1), atau dua parameter hilir atau lebih menyimpang (N<sub>t</sub> ≥ 2).'],['INFO','Kekeruhan dan tinggi air naik di kedua node, jadi tidak dianggap pembuangan.']].map(r=>`<tr><td>${badge(r[0])}</td><td>${r[1]}</td></tr>`).join('')+'<tr><td class="mute">Menyimpang</td><td>Nilai hilir berbeda dari rata-rata 30 menit terakhirnya lebih dari 3 simpangan baku. Perubahan yang sama di hulu dianggap berasal dari hulu.</td></tr>';
+
+/* controls */
+$('#ptabs').innerHTML=P.map(p=>`<button data-k="${p.k}">${p.n}</button>`).join('');
+const pressTabs=()=>{$$('#ptabs button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===ch.k)));$$('#rtabs button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.r===ch.range)))};
+$('#ptabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(b){ch.k=b.dataset.k;ch.a0=performance.now();pressTabs();drawCmp()}});
+$('#rtabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(b){ch.range=+b.dataset.r;ch.a0=performance.now();pressTabs();drawCmp()}});
+$('#align').addEventListener('change',ev=>{ch.align=ev.target.checked;drawCmp()});
+const fig=$('#cmpfig');
+fig.addEventListener('pointermove',ev=>{tipEv={clientX:ev.clientX};onTip(tipEv)});
+fig.addEventListener('pointerleave',hideTip);
+$('#scen').addEventListener('click',ev=>{const b=ev.target.closest('button');if(b)scenario(b.dataset.s)});
+$('#speed').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;sim.speed=+b.dataset.v;$$('#speed button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));loop()});
+function loadCSV(text,name){
+ const rows=parseCSV(text);if(!rows.length){toast('CSV tidak terbaca. Pastikan kolom timestamp, node_id, dan lima parameter ada.');return}
+ if(mode!=='DEMO')setMode('DEMO');
+ const st=ST.DEMO;st.data={HULU:[],HILIR:[]};st.score=[];st.ev=null;st.log=[];st.last={status:'MENUNGGU',since:0};for(const k in sigs)delete sigs[k];
+ const hu=rows.filter(r=>r.node_id==='HULU');sim.csvInt=hu.length>1?Math.max(5000,(hu[hu.length-1].t-hu[0].t)/(hu.length-1)):5000;
+ sim.csv=rows;sim.csvI=0;sim.fx=[];sim.done=false;sim.t=rows[0].t-5000;scenBtns();S.cur=current();toast(`Memutar ${rows.length} baris dari ${esc(name)}`);schedule();loop();
+}
+$('#csv').addEventListener('change',async ev=>{const f=ev.target.files[0];ev.target.value='';if(f)loadCSV(await f.text(),f.name)});
+$('#vid').addEventListener('click',async()=>{try{const r=await fetch('jagakali_demo_video_5detik.csv');if(!r.ok)throw 0;loadCSV(await r.text(),'dataset video bawaan')}catch(e){toast('File jagakali_demo_video_5detik.csv tidak ditemukan di folder yang sama dengan index.html.')}});
+$('#modesw').addEventListener('click',ev=>{const b=ev.target.closest('button');if(b&&b.dataset.m!==mode)setMode(b.dataset.m)});
+function setMode(m){
+ mode=m;S=ST[m];document.body.className=m==='LIVE'?'is-live':'is-demo';
+ $$('#modesw button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===m)));
+ if(m==='LIVE'){clearTimeout(sim.timer);connect()}else{if(client){try{client.close()}catch(e){}client=null}setConn('terputus');loop()}
+ S.cur=current();for(const k in sigs)delete sigs[k];if(view==='riwayat')renderRiwayat();schedule();
+}
+$('#reconn').addEventListener('click',connect);
+document.addEventListener('click',ev=>{
+ const r=ev.target.closest('[data-rev]');if(r){editing=+r.dataset.rev;for(const k in sigs)delete sigs[k];render();const i=$('#note-'+editing);if(i)i.focus();return}
+ const m=ev.target.closest('.mk');if(m){mapSel=m.dataset.n;mapP(S.cur)}
+});
+document.addEventListener('keydown',ev=>{const m=ev.target.closest&&ev.target.closest('.mk');if(m&&(ev.key==='Enter'||ev.key===' ')){ev.preventDefault();mapSel=m.dataset.n;mapP(S.cur)}if(ev.key==='Escape'&&editing!=null){editing=null;for(const k in sigs)delete sigs[k];render()}});
+document.addEventListener('submit',ev=>{const f=ev.target.closest('.rv');if(!f)return;ev.preventDefault();const id=+f.dataset.id,l=S.log.find(x=>x.id===id);if(l){l.rev=true;l.note=f.querySelector('input').value.trim()}editing=null;for(const k in sigs)delete sigs[k];render()});
+['#fStatus','#fDate','#fRev'].forEach(s=>$(s).addEventListener('input',logPage));
+['#rFrom','#rTo','#rNode'].forEach(s=>$(s).addEventListener('input',renderRiwayat));
+$('#dl').addEventListener('click',()=>{const rows=histRows(),name=`jagakali_${$('#rNode').value}_${$('#rFrom').value||ymd(evalT())}.csv`;try{const u=URL.createObjectURL(new Blob([csvOf(rows)],{type:'text/csv'})),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast(`Mengunduh ${esc(name)}, ${rows.length} baris. Jika tidak muncul, pakai Salin CSV.`)}catch(e){toast('Unduhan diblokir browser. Pakai Salin CSV.')}});
+$('#cp').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(csvOf(histRows()));toast('CSV tersalin ke papan klip')}catch(e){toast('Browser menolak akses papan klip')}});
+buildCfg();
+document.addEventListener('input',ev=>{const k=ev.target.dataset&&ev.target.dataset.k;if(!k||!ev.target.id.startsWith('c-'))return;const num=typeof DEF[k]==='number',v=num?parseFloat(ev.target.value):ev.target.value.trim();if(num&&(!isFinite(v)||v<0))return;if(!num&&!v)return;cfg[k]=v;saveCfg();S.cur=current();schedule()});
+$('#reset').addEventListener('click',()=>{Object.assign(cfg,DEF);saveCfg();fillCfg();S.cur=current();schedule();toast('Pengaturan dikembalikan ke default')});
+$('#notif').addEventListener('click',async()=>{try{if(!('Notification' in window))throw 0;const p=await Notification.requestPermission();$('#notifS').textContent=p==='granted'?'Notifikasi browser aktif':'Izin notifikasi ditolak; notifikasi tetap tampil di halaman'}catch(e){$('#notifS').textContent='Browser ini tidak mendukung notifikasi; notifikasi tetap tampil di halaman'}});
+function route(){
+ const h=(location.hash||'').slice(1);view=['dashboard','log','riwayat','pengaturan','tentang'].includes(h)?h:'dashboard';
+ $$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+view));
+ $$('#nav a').forEach(a=>a.setAttribute('aria-current',a.getAttribute('href')==='#'+view?'page':'false'));
+ if(view==='riwayat')renderRiwayat();if(view==='pengaturan')fillCfg();
+ for(const k in sigs)delete sigs[k];schedule();
+}
+addEventListener('hashchange',()=>{route();scrollTo(0,0)});
+const ro=new ResizeObserver(()=>{if(view==='dashboard'&&S.cur){drawCmp();drawScore()}});ro.observe($('#cmp'));ro.observe($('#scr'));
+setInterval(()=>{if(mode==='LIVE'){S.cur=current();updateLog(S.cur);schedule()}},1000);
+
+/* boot */
+pressTabs();setConn('terputus');prefill();S.cur=current();scenBtns();route();loop();
+slider($('#modesw'),'button[aria-pressed=true]');slider($('#speed'),'button[aria-pressed=true]');slider($('#ptabs'),'button[aria-pressed=true]');slider($('#rtabs'),'button[aria-pressed=true]');slider($('#nav'),'a[aria-current=page]');
+}
+</script>
+</body>
+</html>

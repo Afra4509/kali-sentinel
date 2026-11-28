@@ -1,0 +1,8 @@
+{$BROKER_DOMAIN} {
+    handle /mqtt {
+        reverse_proxy reader:9001
+    }
+    handle {
+        respond 404
+    }
+}

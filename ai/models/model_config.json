@@ -1,5 +1,5 @@
 {
-  "created": "2026-11-25T16:19:25",
+  "created": "2026-11-25T22:33:31",
   "step_s": 60,
   "if_features": [
     "ex_ph",
@@ -59,12 +59,27 @@
     "spku_turbidity_ntu",
     "spku_tds_ppm_est",
     "spku_water_level_cm",
+    "missh_ph",
+    "missh_temperature_c",
+    "missh_turbidity_ntu",
+    "missh_tds_ppm_est",
+    "missh_water_level_cm",
+    "missu_ph",
+    "missu_temperature_c",
+    "missu_turbidity_ntu",
+    "missu_tds_ppm_est",
+    "missu_water_level_cm",
+    "zl_ph",
+    "zl_temperature_c",
+    "zl_turbidity_ntu",
+    "zl_tds_ppm_est",
+    "zl_water_level_cm",
     "rangebad_h",
     "rangebad_u"
   ],
-  "score_c": 0.5612704859837289,
-  "score_k": 0.05208398884786154,
-  "threshold": 0.862,
+  "score_c": 0.4452418789562634,
+  "score_k": 0.03438759347943676,
+  "threshold": 0.795,
   "rules": {
     "ph_min": 6.0,
     "ph_max": 9.0,
@@ -74,7 +89,8 @@
     "sd_k": 3.0,
     "flat_min": 15,
     "dn_min": 2.0,
-    "dn_strong": 6.0
+    "dn_strong": 6.0,
+    "sensor_gate": 0.6
   },
   "classes": [
     "hujan",
@@ -82,5 +98,10 @@
     "pembuangan",
     "sensor_rusak"
   ],
-  "trained_on": "kalisentinel_training_30hari_augmented.csv"
+  "trained_on": [
+    "30hari",
+    "augmented",
+    "v2"
+  ],
+  "train_rows": 172254
 }

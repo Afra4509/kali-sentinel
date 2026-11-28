@@ -1,0 +1,10 @@
+{
+  "framework": null,
+  "outputDirectory": "public",
+  "functions": {
+    "api/live.js": {
+      "maxDuration": 60,
+      "includeFiles": "emqxsl-ca.crt"
+    }
+  }
+}

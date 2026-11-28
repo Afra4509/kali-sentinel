@@ -1,68 +1,78 @@
-# Laporan evaluasi model KALI-Sentinel
+# Laporan evaluasi model Jagakali
 
-Data latih dari hari 1–21 di `kalisentinel_training_30hari_augmented.csv` (30198 baris dasar, 35448 baris untuk Random Forest).
-Data uji dari skenario asli hari 22–30 (12960 baris). Interval 60 detik.
-Dataset sintetis terkalibrasi; angka ini mengukur logika dan model, bukan kinerja di sungai asli.
+Dilatih 25 November 2026 22:33. Semua data sintetis yang dikalibrasi; angka ini mengukur logika dan model, bukan kinerja di sungai asli.
 
-## Skor anomali (Isolation Forest)
-- Ambang θ terpilih: **0.862** (dipakai sebagai field `threshold`).
-- F1 pembuangan vs lainnya di data uji, memakai s_t > θ saja: **0.717**.
-- Median skor di data uji: normal 0.019, hujan 0.031, pembuangan 0.968.
+## Data
 
-## Status akhir per label (persentase baris data uji)
+- Latih: 172,254 baris (30 hari hari 1–21, tiga run augmented berisi gangguan sensor, synthetic_v2 split latih + augmentasi).
+- Uji: 70,140 baris dari run yang tidak pernah dilihat model (30 hari hari 22–30, synthetic_v2 split uji: nominal, noise, shift, telemetri, stress).
+- Ambang skor θ = **0.795**.
+
+## Ringkasan per profil uji
+
+| profile   |   baris |   buangan tertangkap % |   buangan jadi BAHAYA % |   alarm palsu, sensor sehat % |   alarm palsu, saat gangguan sensor % |
+|:----------|--------:|-----------------------:|------------------------:|------------------------------:|--------------------------------------:|
+| asli      |   12960 |                   87.7 |                    54.8 |                           0.2 |                                   0.3 |
+| noise     |   11436 |                   96.1 |                    81.3 |                           1.7 |                                  14   |
+| nominal   |   11436 |                   93.8 |                    62.9 |                           0.2 |                                  11.1 |
+| shift     |   11436 |                   95.9 |                    68.1 |                           1.1 |                                  12.7 |
+| stress    |   11436 |                   86.5 |                    68.2 |                           1.9 |                                  17   |
+| telemetri |   11436 |                   94.9 |                    89   |                           0.4 |                                   3.9 |
+
+Kejadian buangan yang tertangkap minimal sekali: **100%** dari 84 kejadian; median waktu sampai alarm **3 menit**.
+
+## Alarm palsu per jenis gangguan sensor (sungai sebenarnya normal/hujan)
+
+| gangguan   |   alarm % |
+|:-----------|----------:|
+| bias       |      52.2 |
+| drift      |      20   |
+| intermiten |       0   |
+| macet      |       6.4 |
+| putus      |       0.6 |
+| spike      |       2.1 |
+
+## Status akhir per label (% baris uji)
 
 | label        |   AMAN |   INFO |   WASPADA |   BAHAYA |
 |:-------------|-------:|-------:|----------:|---------:|
-| hujan        |   94.1 |    4.8 |       1.1 |      0   |
-| normal       |  100   |    0   |       0   |      0   |
-| pembuangan   |   12.6 |    0   |      32.6 |     54.8 |
-| sensor_rusak |   92.1 |    7.9 |       0   |      0   |
-
-Yang diharapkan: pembuangan → WASPADA/BAHAYA, hujan → INFO/AMAN, sensor_rusak → bukan BAHAYA.
-
-## Waktu deteksi pembuangan (data uji)
-
-| Mulai | Menit sampai WASPADA/BAHAYA | Pernah BAHAYA |
-|---|---|---|
-| 23/11 02:07 | 2 | ya |
-| 27/11 13:09 | 2 | ya |
-| 28/11 14:33 | 3 | tidak |
-| 29/11 21:49 | 3 | ya |
+| hujan        |   92.8 |    5.1 |       1.9 |      0.2 |
+| normal       |   99.7 |    0   |       0.3 |      0   |
+| pembuangan   |    6.8 |    0   |      20.3 |     73   |
+| sensor_rusak |   83.4 |    2.8 |      11.7 |      2.1 |
 
 ## Klasifikasi pola (Random Forest)
 
 ```
               precision    recall  f1-score   support
 
-       hujan      0.902     0.676     0.773      2128
-      normal      0.932     0.995     0.963     10089
-  pembuangan      1.000     0.953     0.976       365
-sensor_rusak      0.804     0.521     0.632       378
+      normal      0.816     0.956     0.880     37747
+       hujan      0.776     0.728     0.751     17744
+  pembuangan      0.929     0.940     0.935      5506
+sensor_rusak      0.862     0.349     0.497      9143
 
-    accuracy                          0.928     12960
-   macro avg      0.910     0.786     0.836     12960
-weighted avg      0.925     0.928     0.922     12960
+    accuracy                          0.818     70140
+   macro avg      0.846     0.743     0.766     70140
+weighted avg      0.821     0.818     0.802     70140
 
 ```
 
-Matriks kebingungan (baris = label asli, kolom = prediksi):
-
 |              |   normal |   hujan |   pembuangan |   sensor_rusak |
 |:-------------|---------:|--------:|-------------:|---------------:|
-| normal       |    10040 |       3 |            0 |             46 |
-| hujan        |      688 |    1438 |            0 |              2 |
-| pembuangan   |       16 |       1 |          348 |              0 |
-| sensor_rusak |       29 |     152 |            0 |            197 |
+| normal       |    36068 |    1207 |           68 |            404 |
+| hujan        |     4703 |   12925 |           34 |             82 |
+| pembuangan   |      229 |      75 |         5178 |             24 |
+| sensor_rusak |     3203 |    2457 |          291 |           3192 |
 
 ## 10 fitur terpenting
 
-- `dn_turbidity_ntu`: 0.121
-- `zu_turbidity_ntu`: 0.107
-- `dn_tds_ppm_est`: 0.107
-- `zh_turbidity_ntu`: 0.060
-- `zh_tds_ppm_est`: 0.050
-- `dn_temperature_c`: 0.047
-- `ex_tds_ppm_est`: 0.042
-- `slh_tds_ppm_est`: 0.037
-- `flath_ph`: 0.034
-- `flatu_ph`: 0.033
+- `zl_tds_ppm_est`: 0.109
+- `dn_tds_ppm_est`: 0.099
+- `zl_turbidity_ntu`: 0.078
+- `dn_turbidity_ntu`: 0.076
+- `zu_turbidity_ntu`: 0.068
+- `zh_turbidity_ntu`: 0.046
+- `zl_water_level_cm`: 0.040
+- `dn_temperature_c`: 0.038
+- `dn_ph`: 0.036
+- `ex_tds_ppm_est`: 0.028

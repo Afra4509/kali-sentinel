@@ -35,3 +35,9 @@ Sampaikan ini apa adanya ke juri: model dilatih pada data sintetis terkalibrasi,
 - Kekeruhan air baku harian PDAM Surya Sembada, Juli–September 2023: https://repository.upnjatim.ac.id/32424/4/BAB%202%20Magang_Nara.pdf
 - Kekeruhan musim hujan vs kemarau, IPA Kedunguling Sidoarjo: https://ejurnal.its.ac.id/index.php/teknik/article/download/4427/1158
 - Kekeruhan 3.000 NTU di Kali Surabaya (berita): https://beritajatim.com/?p=655534
+
+## Dataset tambahan dari tim (versi 5.0)
+
+- `jagakali_training_30hari_clean.csv` dan `jagakali_training_30hari_augmented.csv` adalah turunan dari data 30 hari di atas: versi tanpa gangguan sensor, dan versi dengan tiga salinan hari 1–21 yang diberi gangguan sensor tambahan.
+- `jagakali_synthetic_v2.csv.gz` berisi 19 run masing-masing 4 hari, dengan profil nominal, noise, shift, telemetri, dan stress. Kolom `ref_*` menyimpan nilai sebenarnya sebelum gangguan sensor, `label_lingkungan` menyimpan keadaan sungai sebenarnya, dan `split` menentukan run untuk latih, augmentasi, atau uji.
+- Ketiganya juga sintetis. Nilai di synthetic_v2 sedikit lebih lebar (pH 5,3–9,4, tinggi air rata-rata 92 cm) daripada data 30 hari, sehingga berguna untuk menguji ketahanan model di luar rentang latihnya.

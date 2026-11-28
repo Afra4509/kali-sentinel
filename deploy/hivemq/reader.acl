@@ -1,0 +1,8 @@
+topic read jagakali/node/HULU
+topic read jagakali/node/HILIR
+topic read jagakali/analisis
+
+user private-ingest
+topic write jagakali/node/HULU
+topic write jagakali/node/HILIR
+topic write jagakali/analisis

@@ -1,0 +1,36 @@
+services:
+  hivemq:
+    image: hivemq/hivemq4:4.57.0
+    restart: unless-stopped
+    environment:
+      HIVEMQ_LICENSE_KEY: ${HIVEMQ_LICENSE_KEY:?Set the replacement license on the Docker host}
+      HIVEMQ_LOG_BASED_CLUSTERING_ENABLED: "true"
+    ports:
+      - "${MQTT_PRIVATE_IP:-127.0.0.1}:1883:1883"
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - broker-data:/opt/hivemq/data
+  reader:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    depends_on: [hivemq]
+    volumes:
+      - ./reader.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./users:/mosquitto/config/users:ro
+      - ./reader.acl:/mosquitto/config/reader.acl:ro
+  https:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [reader]
+    environment:
+      BROKER_DOMAIN: ${BROKER_DOMAIN:-mqtt.jagakali.my.id}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - tls-data:/data
+volumes:
+  broker-data:
+  tls-data:
+

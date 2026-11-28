@@ -1,6 +1,6 @@
 """
 generate_dataset.py
-Membuat dataset sintetis KALI-Sentinel yang dikalibrasi ke data terbitan Kali Surabaya.
+Membuat dataset sintetis Jagakali yang dikalibrasi ke data terbitan Kali Surabaya.
 
 PENTING: tidak ada data sensor per-menit Kali Surabaya yang terbuka untuk publik.
 Dataset ini sintetis, tetapi rentang nilai, siklus harian, dan besaran kejadian
@@ -8,9 +8,9 @@ diambil dari sumber di docs/SUMBER_DATA.md. Ganti/tambah dengan data asli sensor
 tim begitu tersedia (format kolom sama).
 
 Keluaran (folder data/):
-  kalisentinel_training_30hari.csv   data mentah 60 detik, 30 hari, berlabel
-  kalisentinel_demo_video_5detik.csv data 5 detik, 2 jam, skenario untuk video & mode DEMO
-  kalisentinel_events.csv            daftar kejadian (waktu mulai/selesai, jenis, node)
+  jagakali_training_30hari.csv   data mentah 60 detik, 30 hari, berlabel
+  jagakali_demo_video_5detik.csv data 5 detik, 2 jam, skenario untuk video & mode DEMO
+  jagakali_events.csv            daftar kejadian (waktu mulai/selesai, jenis, node)
 
 Jalankan:  python generate_dataset.py
 """
@@ -236,7 +236,7 @@ def main():
     events = random_events(days, rng)
     start = "2026-11-01T00:00:00"
     df = build(days, 60, start, events, seed=7)
-    df.to_csv(OUT / "kalisentinel_training_30hari.csv", index=False)
+    df.to_csv(OUT / "jagakali_training_30hari.csv", index=False)
     t0 = pd.Timestamp(start)
     ev_rows = []
     for e in events:
@@ -245,7 +245,7 @@ def main():
                         "selesai_perkiraan": (t0 + pd.Timedelta(minutes=end)).strftime("%Y-%m-%dT%H:%M") + WIB,
                         "jenis": e["type"], "detail": e.get("kind", e.get("mode", "")),
                         "node": e.get("node", "KEDUANYA"), "parameter": json.dumps(e.get("amp", e.get("param", "")))})
-    pd.DataFrame(ev_rows).sort_values("mulai").to_csv(OUT / "kalisentinel_events.csv", index=False)
+    pd.DataFrame(ev_rows).sort_values("mulai").to_csv(OUT / "jagakali_events.csv", index=False)
 
     # --- dataset demo video: 2 jam, 5 detik, skenario berurutan -------------------
     demo_ev = [
@@ -257,7 +257,7 @@ def main():
     ]
     # 09.00 normal · 09.50 hujan · 10.40 pembuangan di hilir · 11.25 sensor pH HILIR macet · selesai 11.50
     demo = build(170.0 / 1440, 5, "2026-12-01T09:00:00", demo_ev, seed=11)
-    demo.to_csv(OUT / "kalisentinel_demo_video_5detik.csv", index=False)
+    demo.to_csv(OUT / "jagakali_demo_video_5detik.csv", index=False)
     print("training rows:", len(df), "| demo rows:", len(demo))
     print(df.groupby(["node_id", "label"]).size())
 

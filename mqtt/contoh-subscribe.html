@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Uji MQTT KALI-Sentinel</title>
+<title>Uji MQTT Jagakali</title>
 <style>
   body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#fff;color:#0b1d26;padding:20px max(4vw,16px)}
   h1{font-size:26px;margin:0 0 4px}
@@ -11,17 +11,14 @@
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
   button{font:inherit;font-weight:600;padding:9px 14px;border-radius:9px;border:1px solid #c9d3d6;background:#fff;cursor:pointer}
   button.pri{background:#0b6b7b;color:#fff;border-color:#0b6b7b}
-  input{font:inherit;padding:8px 10px;border-radius:9px;border:1px solid #c9d3d6;min-width:150px}
   #st{font-weight:700}
   pre{background:#0b1d26;color:#d8f3f6;padding:14px;border-radius:12px;height:420px;overflow:auto;font-size:13px;white-space:pre-wrap}
 </style>
 </head>
 <body>
 <h1>Uji koneksi MQTT</h1>
-<p>Halaman ini hanya menampilkan pesan mentah dari tiga topik KALI-Sentinel. Pakai untuk memastikan ESP32, simulator, atau server AI sudah mengirim data sebelum membuka dashboard.</p>
+<p>Halaman ini hanya menampilkan pesan mentah dari tiga topik Jagakali. Pakai untuk memastikan ESP32, simulator, atau server AI sudah mengirim data sebelum membuka dashboard.</p>
 <div class="row">
-  <input id="usr" type="text" placeholder="Username MQTT" value="ks-web" autocomplete="off">
-  <input id="pwd" type="password" placeholder="Password MQTT" value="KS-Web-Sub!2026" autocomplete="off">
   <button class="pri" id="go">Hubungkan</button>
   <button id="test">Kirim pesan uji ke HILIR</button>
   <button id="clr">Bersihkan</button>
@@ -30,16 +27,14 @@
 <pre id="log">Klik Hubungkan. Pesan yang masuk akan muncul di sini.</pre>
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
-<script src="kalisentinel-mqtt.js"></script>
+<script src="jagakali-mqtt.js"></script>
 <script>
   var ks = null, log = document.getElementById('log');
   function tulis(s){ log.textContent = new Date().toLocaleTimeString('id-ID') + '  ' + s + '\n' + log.textContent; }
   document.getElementById('go').onclick = function () {
     if (ks) ks.disconnect();
     log.textContent = '';
-    ks = KaliSentinelMQTT.connect({
-      username: document.getElementById('usr').value.trim(),
-      password: document.getElementById('pwd').value,
+    ks = JagakaliMQTT.connect({
       onStatus: function (s) { document.getElementById('st').textContent = s; tulis('[koneksi] ' + s); },
       onNode: function (node, d) { tulis('[' + node + '] pH ' + d.ph + ' · ' + d.temperature_c + ' °C · ' + d.turbidity_ntu + ' NTU · ' + d.tds_ppm_est + ' ppm · ' + d.water_level_cm + ' cm'); },
       onAnalisis: function (a) { tulis('[ANALISIS] ' + a.status + ' · skor ' + a.anomaly_score + ' · ' + a.pattern + ' · ' + a.message); },
@@ -49,7 +44,7 @@
   document.getElementById('test').onclick = function () {
     if (!ks) return tulis('Hubungkan dulu.');
     ks.publish('HILIR', { timestamp: new Date().toISOString(), ph: 7.1, temperature_c: 28.4, turbidity_ntu: 42, tds_ppm_est: 210, water_level_cm: 85 });
-    tulis('pesan uji terkirim ke kalisentinel/node/HILIR');
+    tulis('pesan uji terkirim ke jagakali/node/HILIR');
   };
   document.getElementById('clr').onclick = function () { log.textContent = ''; };
 </script>
